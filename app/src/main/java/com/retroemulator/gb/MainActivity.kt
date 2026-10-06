@@ -69,7 +69,8 @@ class MainActivity : Activity() {
         findViewById<View>(R.id.settings_button).setOnClickListener {
             SettingsDialog.show(this, settings, onChanged = {})
         }
-        handleViewIntent(intent)
+        // A recreated activity gets its original launch intent again; that file was already imported.
+        if (savedInstanceState == null) handleViewIntent(intent)
     }
 
     override fun onResume() {
@@ -133,18 +134,24 @@ class MainActivity : Activity() {
 
     private fun handleViewIntent(intent: Intent?) {
         if (intent?.action != Intent.ACTION_VIEW) return
+        // Reopened from recents: that file was handled when it was first opened.
+        if (intent.flags and Intent.FLAG_ACTIVITY_LAUNCHED_FROM_HISTORY != 0) return
         val uri = intent.data ?: return
         setIntent(Intent(this, MainActivity::class.java))
-        importUris(listOf(uri), launchSingle = true)
+        importUris(listOf(uri), launchSingle = true, fromViewIntent = true)
     }
 
-    private fun importUris(uris: List<Uri>, launchSingle: Boolean = false) {
+    private fun importUris(uris: List<Uri>, launchSingle: Boolean = false, fromViewIntent: Boolean = false) {
         io.execute {
             val added = mutableListOf<RomEntry>()
             val errors = mutableListOf<String>()
             for (uri in uris) {
                 try {
                     added += library.import(uri)
+                } catch (e: SecurityException) {
+                    // Android can redeliver an old "Open with" intent when it restores the task; its
+                    // read permission has expired by then and the file was imported the first time.
+                    if (!fromViewIntent) errors += getString(R.string.import_failed, uri.lastPathSegment?.substringAfterLast('/') ?: "file", e.message ?: e.toString())
                 } catch (e: Exception) {
                     errors += getString(R.string.import_failed, uri.lastPathSegment?.substringAfterLast('/') ?: "file", e.message ?: e.toString())
                 }
@@ -275,6 +282,7 @@ class MainActivity : Activity() {
 
             val system = getString(
                 when {
+                    entry.gba -> R.string.system_gba
                     entry.cgbOnly -> R.string.system_gbc_only
                     entry.cgb -> R.string.system_gbc
                     else -> R.string.system_gb
@@ -293,16 +301,21 @@ class MainActivity : Activity() {
             view.findViewById<TextView>(R.id.details).text = details
 
             val badge = view.findViewById<TextView>(R.id.badge)
-            badge.text = if (entry.cgb) "GBC" else "GB"
+            badge.text = when {
+                entry.gba -> "GBA"
+                entry.cgb -> "GBC"
+                else -> "GB"
+            }
             val badgeColor = getColor(
                 when {
+                    entry.gba -> R.color.badge_gba
                     entry.cgbOnly -> R.color.badge_gbc_only
                     entry.cgb -> R.color.badge_gbc
                     else -> R.color.badge_gb
                 }
             )
             badge.background = PixelBoxDrawable(unit, 2, badgeColor, shadow = BADGE_SHADOW)
-            badge.setTextColor(getColor(if (entry.cgb) android.R.color.white else R.color.badge_gb_text))
+            badge.setTextColor(getColor(if (entry.cgb || entry.gba) android.R.color.white else R.color.badge_gb_text))
 
             val card = view.findViewById<View>(R.id.card)
             card.setOnClickListener { launch(entry) }

@@ -5,6 +5,7 @@ import android.net.Uri
 import android.provider.OpenableColumns
 import com.retroemulator.gb.core.Cartridge
 import com.retroemulator.gb.core.CartridgeHeader
+import com.retroemulator.gb.gba.Gba
 import java.io.ByteArrayInputStream
 import java.io.File
 import java.io.IOException
@@ -28,6 +29,8 @@ class RomLibrary(private val context: Context) {
         val cgbOnly: Boolean,
         val mapper: String,
         val lastPlayed: Long,
+        /** A Game Boy Advance game. */
+        val gba: Boolean,
         /** Shipped inside the APK from the project's games/ folder. */
         val bundled: Boolean,
     ) {
@@ -46,6 +49,19 @@ class RomLibrary(private val context: Context) {
         return try {
             val head = ByteArray(0x150)
             RandomAccessFile(file, "r").use { it.readFully(head) }
+            if (Gba.isGbaRom(head)) {
+                val code = String(head, 0xA0, 12, Charsets.US_ASCII).trim { it <= ' ' }
+                return RomEntry(
+                    file = file,
+                    title = prettyTitle(file.nameWithoutExtension, code.ifBlank { file.nameWithoutExtension }),
+                    cgb = false,
+                    cgbOnly = false,
+                    mapper = "GBA",
+                    lastPlayed = meta.getLong("played:" + file.name, 0L),
+                    gba = true,
+                    bundled = meta.getBoolean(KEY_BUNDLED + file.name, false),
+                )
+            }
             val header = CartridgeHeader(head)
             val name = header.title.ifBlank { file.nameWithoutExtension }
             RomEntry(
@@ -55,6 +71,7 @@ class RomLibrary(private val context: Context) {
                 cgbOnly = header.cgbOnly,
                 mapper = header.mapperName,
                 lastPlayed = meta.getLong("played:" + file.name, 0L),
+                gba = false,
                 bundled = meta.getBoolean(KEY_BUNDLED + file.name, false),
             )
         } catch (e: IOException) {
@@ -133,7 +150,7 @@ class RomLibrary(private val context: Context) {
                     }
                 }
             }
-            val (name, bytes) = found ?: throw IOException("The zip file does not contain a .gb or .gbc ROM")
+            val (name, bytes) = found ?: throw IOException("The zip file does not contain a .gb, .gbc or .gba ROM")
             displayName = name
             data = bytes
         }
@@ -142,8 +159,11 @@ class RomLibrary(private val context: Context) {
         var safeName = sanitize(displayName)
         val ext = safeName.substringAfterLast('.', "").lowercase()
         if (ext !in ROM_EXTENSIONS) {
-            val header = CartridgeHeader(data)
-            safeName += if (header.supportsCgb) ".gbc" else ".gb"
+            safeName += when {
+                Gba.isGbaRom(data) -> ".gba"
+                CartridgeHeader(data).supportsCgb -> ".gbc"
+                else -> ".gb"
+            }
         }
         val target = File(romDir, safeName)
         val tmp = File(romDir, "$safeName.tmp")
@@ -154,15 +174,19 @@ class RomLibrary(private val context: Context) {
     }
 
     private fun validate(name: String, data: ByteArray) {
-        if (name.substringAfterLast('.', "").lowercase() == "gba") {
-            throw IOException("Game Boy Advance games aren't supported. This app plays Game Boy and Game Boy Color games.")
+        if (Gba.isGbaRom(data)) {
+            if (data.size > MAX_GBA_SIZE) throw IOException("This file is too large to be a Game Boy Advance ROM")
+            return
+        }
+        if (name.substringAfterLast('.', "").lowercase() in setOf("gba", "agb")) {
+            throw IOException("This isn't a valid Game Boy Advance ROM")
         }
         if (data.size < 0x150) throw IOException("This file is too small to be a Game Boy ROM")
-        if (data.size > 8 * 1024 * 1024) throw IOException("This file is too large to be a Game Boy ROM")
+        if (data.size > MAX_GB_SIZE) throw IOException("This file is too large to be a Game Boy ROM")
         // Every Game Boy cartridge carries the Nintendo logo in its header (the boot ROM checks it).
         for (i in NINTENDO_LOGO.indices) {
             if (data[0x104 + i] != NINTENDO_LOGO[i].toByte()) {
-                throw IOException("This isn't a Game Boy or Game Boy Color ROM")
+                throw IOException("This isn't a Game Boy, Game Boy Color or Game Boy Advance ROM")
             }
         }
         // Throws for mappers the emulator does not support, with a readable message.
@@ -220,7 +244,9 @@ class RomLibrary(private val context: Context) {
     }
 
     companion object {
-        val ROM_EXTENSIONS = setOf("gb", "gbc", "cgb", "sgb", "dmg")
+        val ROM_EXTENSIONS = setOf("gb", "gbc", "cgb", "sgb", "dmg", "gba", "agb")
+        private const val MAX_GB_SIZE = 8 * 1024 * 1024
+        private const val MAX_GBA_SIZE = 32 * 1024 * 1024
         const val STATE_SLOTS = 5
         private const val KEY_BUNDLED = "bundled:"
         private const val KEY_BUNDLED_SEEN = "bundled_seen"

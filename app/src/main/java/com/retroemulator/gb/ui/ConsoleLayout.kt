@@ -46,6 +46,9 @@ class ConsoleLayout {
     val menu = PointF()
     val fastForward = PointF()
     val barcode = RectF()
+    /** GBA shoulder buttons; empty for the Game Boy. */
+    val shoulderL = RectF()
+    val shoulderR = RectF()
     val speaker = RectF()
 
     class Decoration(val kind: Int, val x: Float, val y: Float, val size: Int)
@@ -56,17 +59,26 @@ class ConsoleLayout {
     private fun rectU(out: RectF, l: Float, t: Float, r: Float, b: Float) = out.set(px(l), py(t), px(r), py(b))
     private fun pointU(out: PointF, x: Float, y: Float) = out.set(px(x), py(y))
 
-    fun compute(width: Int, height: Int, safe: Rect, integerScale: Boolean) {
+    /** Height / width of the picture: 144/160 for the Game Boy, 160/240 for the GBA. */
+    private var aspect = 0.9f
+
+    fun compute(
+        width: Int, height: Int, safe: Rect, integerScale: Boolean,
+        srcW: Int = 160, srcH: Int = 144, shoulders: Boolean = false,
+    ) {
         if (width <= 0 || height <= 0) return
         decorations.clear()
+        aspect = srcH.toFloat() / srcW
+        shoulderL.setEmpty()
+        shoulderR.setEmpty()
         landscape = width > height * 1.25f
-        if (landscape) computeLandscape(width, height, safe) else computePortrait(width, height, safe)
+        if (landscape) computeLandscape(width, height, safe, shoulders) else computePortrait(width, height, safe, shoulders)
 
-        // Integer scaling shrinks the picture inside the LCD to a whole multiple of 160x144.
-        val s = floor(min(gameArea.width() / 160f, gameArea.height() / 144f))
+        // Integer scaling shrinks the picture inside the LCD to a whole multiple of the source size.
+        val s = floor(min(gameArea.width() / srcW, gameArea.height() / srcH))
         if (integerScale && s >= 1f) {
-            val w = 160f * s
-            val h = 144f * s
+            val w = srcW * s
+            val h = srcH * s
             val l = floor(gameArea.centerX() - w / 2f)
             val t = floor(gameArea.centerY() - h / 2f)
             screen.set(l, t, l + w, t + h)
@@ -76,7 +88,7 @@ class ConsoleLayout {
         valid = true
     }
 
-    private fun computePortrait(width: Int, height: Int, safe: Rect) {
+    private fun computePortrait(width: Int, height: Int, safe: Rect, shoulders: Boolean) {
         u = max(2f, floor(width / 120f))
         ox = floor((width - 120f * u) / 2f)
         oy = 0f
@@ -90,11 +102,11 @@ class ConsoleLayout {
         val sceneMax = 46f
 
         var lcdW = 98f
-        var lcdH = lcdW * 0.9f
+        var lcdH = lcdW * aspect
         val avail = bottom - frameTop - 2 * border - 5f
         if (avail - lcdH - sceneMin < controlsMin) {
             lcdH = max(40f, avail - sceneMin - controlsMin)
-            lcdW = lcdH / 0.9f
+            lcdW = lcdH / aspect
         }
         val sceneH = (avail - lcdH - controlsMin).coerceIn(sceneMin, sceneMax)
         val controlsH = max(avail - lcdH - sceneH, 60f)
@@ -123,6 +135,13 @@ class ConsoleLayout {
         pointU(menu, 17f, pillY + 6f)
         pointU(fastForward, 19f, cTop + 5f)
         rectU(barcode, 80f, cTop + 1.5f, 106f, cTop + 5.5f)
+        if (shoulders) {
+            // L and R sit above the d-pad and the face buttons; fast-forward moves to the middle.
+            rectU(shoulderL, 7f, cTop, 31f, cTop + 7f)
+            rectU(shoulderR, 89f, cTop, 113f, cTop + 7f)
+            pointU(fastForward, 60f, cTop + 4.5f)
+            barcode.setEmpty()
+        }
 
         val frameMidY = frameTop + (lcdH + sceneH) * 0.3f
         decorations += Decoration(COIN, px(15f), py(top + 1.5f), 9)
@@ -134,7 +153,7 @@ class ConsoleLayout {
         decorations += Decoration(SPARKLE, px(14.5f), py(rowY + 1f), 1)
     }
 
-    private fun computeLandscape(width: Int, height: Int, safe: Rect) {
+    private fun computeLandscape(width: Int, height: Int, safe: Rect, shoulders: Boolean) {
         u = max(2f, floor(height / 100f))
         ox = 0f
         oy = floor((height - 100f * u) / 2f)
@@ -147,11 +166,11 @@ class ConsoleLayout {
         val zoneMin = 46f
 
         var lcdH = (bottom - top) - 2 * border - 8f
-        var lcdW = lcdH / 0.9f
+        var lcdW = lcdH / aspect
         val maxW = (right - left) - 2 * zoneMin - 2 * border
         if (lcdW > maxW) {
             lcdW = max(40f, maxW)
-            lcdH = lcdW * 0.9f
+            lcdH = lcdW * aspect
         }
         val mid = (left + right) / 2f
         val cy = (top + bottom) / 2f
@@ -177,6 +196,10 @@ class ConsoleLayout {
         pointU(menu, left + 8f, top + 8f)
         pointU(fastForward, right - 10f, top + 8f)
         barcode.setEmpty()
+        if (shoulders) {
+            rectU(shoulderL, zoneL - 11f, top + 19f, zoneL + 11f, top + 26f)
+            rectU(shoulderR, zoneR - 11f, top + 19f, zoneR + 11f, top + 26f)
+        }
         rectU(speaker, right - 25f, bottom - 26f, right - 7f, bottom - 18f)
 
         decorations += Decoration(COIN, px(left + 1f), py(bottom - 6f), 10)

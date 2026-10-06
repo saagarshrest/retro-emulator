@@ -7,7 +7,7 @@ import android.media.AudioManager
 import android.media.AudioTrack
 import android.os.Process
 import android.util.Log
-import com.retroemulator.gb.core.GameBoy
+
 
 /**
  * Runs the emulator on a dedicated thread.
@@ -16,16 +16,16 @@ import com.retroemulator.gb.core.GameBoy
  * audio clock exactly and never crackles from drift. With sound off (or fast-forward) frames are paced
  * against System.nanoTime().
  *
- * All access to [GameBoy] from other threads must go through [withGameBoy].
+ * All access to the [Machine] from other threads must go through [withMachine].
  */
 class EmulatorSession(
-    initial: GameBoy,
+    initial: Machine,
     private val sampleRate: Int,
     private val listener: Listener,
 ) {
     interface Listener {
-        /** Called on the emulator thread with the finished frame; copy it, don't keep it. */
-        fun onFrame(pixels: IntArray)
+        /** Called on the emulator thread with the finished [width] x [height] frame; copy it, don't keep it. */
+        fun onFrame(pixels: IntArray, width: Int, height: Int)
         fun onFps(fps: Int) {}
         fun onRumble() {}
         /** Called on the emulator thread when battery-backed RAM should be persisted. */
@@ -34,7 +34,7 @@ class EmulatorSession(
 
     private val lock = Object()
     private val pauseLock = Object()
-    private var gb: GameBoy = initial
+    private var machine: Machine = initial
 
     /** Currently held buttons (Joypad bit mask). Newly pressed buttons are latched for a few frames. */
     @Volatile var input = 0
@@ -44,7 +44,7 @@ class EmulatorSession(
         }
     private val inputLock = Any()
     private var latchedPresses = 0
-    private val holdUntil = LongArray(8)
+    private val holdUntil = LongArray(Buttons.COUNT)
     private var frameCount = 0L
 
     @Volatile var fastForward = false
@@ -63,10 +63,10 @@ class EmulatorSession(
     private var pausedAtMillis = 0L
     private var rtcRemainderMillis = 0L
 
-    fun <T> withGameBoy(block: (GameBoy) -> T): T = synchronized(lock) { block(gb) }
+    fun <T> withMachine(block: (Machine) -> T): T = synchronized(lock) { block(machine) }
 
     /** Swaps in a new machine (used by reset). */
-    fun replaceGameBoy(next: GameBoy) = synchronized(lock) { gb = next }
+    fun replaceMachine(next: Machine) = synchronized(lock) { machine = next }
 
     fun start() {
         if (running) return
@@ -81,7 +81,7 @@ class EmulatorSession(
                 // Time spent paused still passes for the cartridge's real-time clock.
                 val elapsed = System.currentTimeMillis() - pausedAtMillis + rtcRemainderMillis
                 if (elapsed > 0) {
-                    synchronized(lock) { gb.cart.rtc?.advance(elapsed / 1000) }
+                    synchronized(lock) { machine.advanceClock(elapsed / 1000) }
                     rtcRemainderMillis = elapsed % 1000
                 }
                 pausedAtMillis = 0
@@ -91,7 +91,7 @@ class EmulatorSession(
         }
     }
 
-    /** Pauses and waits for the current frame to finish, so callers may then touch the GameBoy safely. */
+    /** Pauses and waits for the current frame to finish, so callers may then touch the machine safely. */
     fun pause() {
         synchronized(pauseLock) {
             if (paused) return
@@ -122,7 +122,7 @@ class EmulatorSession(
         }
         frameCount++
         var mask = input
-        for (bit in 0 until 8) {
+        for (bit in 0 until Buttons.COUNT) {
             if (latched and (1 shl bit) != 0) holdUntil[bit] = frameCount + MIN_PRESS_FRAMES
             if (holdUntil[bit] > frameCount) mask = mask or (1 shl bit)
         }
@@ -167,6 +167,7 @@ class EmulatorSession(
         var fpsStart = System.nanoTime()
         var dirtyFrames = 0
         var trackPlaying = false
+        var frameNanos = (1_000_000_000.0 / machine.frameRate).toLong()
 
         try {
             while (running) {
@@ -192,17 +193,18 @@ class EmulatorSession(
                 var batteryData: ByteArray? = null
                 val buttons = effectiveInput()
                 synchronized(lock) {
-                    val g = gb
-                    g.joypad.setState(buttons)
-                    g.runFrame()
-                    sampleCount = g.apu.drainSamples(samples)
-                    listener.onFrame(g.ppu.frameBuffer)
-                    rumble = g.cart.hasRumble && g.cart.consumeRumble()
-                    if (g.cart.hasBattery && g.cart.ramDirty) {
+                    val m = machine
+                    m.setButtons(buttons)
+                    m.runFrame()
+                    sampleCount = m.drainSamples(samples)
+                    listener.onFrame(m.frameBuffer, m.screenWidth, m.screenHeight)
+                    rumble = m.consumeRumble()
+                    frameNanos = (1_000_000_000.0 / m.frameRate).toLong()
+                    if (m.hasBattery && m.batteryDirty) {
                         // Debounce: games write save RAM in bursts.
                         if (++dirtyFrames >= 90) {
-                            g.cart.ramDirty = false
-                            batteryData = g.cart.saveData()
+                            m.batteryDirty = false
+                            batteryData = m.batteryData()
                             dirtyFrames = 0
                         }
                     } else {
@@ -233,7 +235,7 @@ class EmulatorSession(
                         trackPlaying = false
                     }
                     val speed = if (ff) fastForwardSpeed else 1
-                    nextFrame += FRAME_NANOS / speed
+                    nextFrame += frameNanos / speed
                     val wait = nextFrame - System.nanoTime()
                     if (wait > 0) {
                         Thread.sleep(wait / 1_000_000, (wait % 1_000_000).toInt())
@@ -264,7 +266,6 @@ class EmulatorSession(
     companion object {
         private const val TAG = "EmulatorSession"
         private const val MIN_PRESS_FRAMES = 3
-        private const val FRAME_NANOS = (1_000_000_000.0 / GameBoy.FRAME_RATE).toLong()
 
         fun preferredSampleRate(context: Context): Int {
             val am = context.getSystemService(Context.AUDIO_SERVICE) as AudioManager

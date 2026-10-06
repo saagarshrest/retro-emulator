@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
     <string name="app_name">Retro Emulator</string>
-    <string name="library_subtitle">Game Boy &amp; Game Boy Color</string>
+    <string name="library_subtitle">Game Boy · Color · Advance</string>
     <string name="console_label">RETRO EMULATOR</string>
     <string name="label_select">SELECT</string>
     <string name="label_start">START</string>
@@ -9,7 +9,7 @@
     <string name="label_fast">FAST</string>
     <string name="add_games">Add games</string>
     <string name="empty_title">No games yet</string>
-    <string name="empty_body">Add your own .gb or .gbc ROM files (zipped files work too). Games and saves stay on this device.</string>
+    <string name="empty_body">Add your own .gb, .gbc or .gba ROM files (zipped files work too). Games and saves stay on this device.</string>
     <string name="more_options">More options</string>
     <string name="never_played">New</string>
     <string name="played_ago">Played %1$s</string>
@@ -18,6 +18,7 @@
     <string name="system_gb">Game Boy</string>
     <string name="system_gbc">Game Boy Color</string>
     <string name="system_gbc_only">Game Boy Color only</string>
+    <string name="system_gba">Game Boy Advance</string>
     <string name="games_added">%1$d games added</string>
     <string name="game_added">Added %1$s</string>
     <string name="import_failed">Could not add %1$s: %2$s</string>
@@ -64,7 +65,7 @@
     <string name="settings_volume">Volume: %1$d%%</string>
     <string name="settings_display">Display</string>
     <string name="settings_palette">Game Boy palette</string>
-    <string name="settings_color_correction">Game Boy Color color correction</string>
+    <string name="settings_color_correction">Color correction (Game Boy Color and Advance)</string>
     <string name="settings_integer_scaling">Integer scaling (sharpest pixels)</string>
     <string name="settings_smooth">Smooth scaling</string>
     <string name="settings_show_fps">Show FPS</string>

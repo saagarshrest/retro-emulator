@@ -4,12 +4,21 @@ package com.retroemulator.gb.core
  * Audio processing unit: two square channels (one with sweep), a wave channel and a noise channel.
  * Channel timers run on the 4.19 MHz clock; the 512 Hz frame sequencer is clocked by the DIV counter.
  * Output is box-filtered down to [sampleRate] as interleaved 16-bit stereo.
+ *
+ * The Game Boy Advance reuses these four channels (with [gba] set): its wave channel gains a second
+ * RAM bank, a 64-sample mode and a 75% volume setting, and the GBA mixes [mixLeft]/[mixRight] itself.
  */
-class Apu(private val gb: GameBoy, sampleRate: Int) {
+class Apu(private val cgb: Boolean, sampleRate: Int, private val gba: Boolean = false) {
     private val ch1 = SquareChannel(true)
     private val ch2 = SquareChannel(false)
-    private val ch3 = WaveChannel(!gb.cgb)
+    private val ch3 = WaveChannel(!cgb && !gba, gba)
     private val ch4 = NoiseChannel()
+
+    /** Current mixed PSG output per side (each channel -15..15, times the NR50 volume 1..8). */
+    var mixLeft = 0
+        private set
+    var mixRight = 0
+        private set
 
     private val regs = IntArray(0x17) // FF10-FF26 raw values for read-back
     private var power = true
@@ -44,15 +53,31 @@ class Apu(private val gb: GameBoy, sampleRate: Int) {
     // Clocking
     // ------------------------------------------------------------------------------------------
 
-    /** Advance by [dots] cycles of the 4.19 MHz clock. */
+    /** Advance by [dots] cycles of the 4.19 MHz clock and accumulate output for resampling. */
     fun tick(dots: Int) {
-        if (power) {
-            ch1.step(dots)
-            ch2.step(dots)
-            ch3.step(dots)
-            ch4.step(dots)
+        stepChannels(dots)
+        mix()
+        accLeft += (mixLeft * dots).toLong()
+        accRight += (mixRight * dots).toLong()
+        accCount += dots
+        sampleCounter += dots.toLong() * sampleRate
+        if (sampleCounter >= CLOCK) {
+            sampleCounter -= CLOCK
+            emitSample()
         }
+    }
 
+    /** Advances the channel timers by [dots] 4.19 MHz cycles without producing output samples. */
+    fun stepChannels(dots: Int) {
+        if (!power) return
+        ch1.step(dots)
+        ch2.step(dots)
+        ch3.step(dots)
+        ch4.step(dots)
+    }
+
+    /** Recomputes [mixLeft] and [mixRight] from the channels' current outputs. */
+    fun mix() {
         var left = 0
         var right = 0
         val routing = nr51
@@ -60,17 +85,8 @@ class Apu(private val gb: GameBoy, sampleRate: Int) {
         if (ch2.dacEnabled) { val s = ch2.output() * 2 - 15; if (routing and 0x20 != 0) left += s; if (routing and 0x02 != 0) right += s }
         if (ch3.dacEnabled) { val s = ch3.output() * 2 - 15; if (routing and 0x40 != 0) left += s; if (routing and 0x04 != 0) right += s }
         if (ch4.dacEnabled) { val s = ch4.output() * 2 - 15; if (routing and 0x80 != 0) left += s; if (routing and 0x08 != 0) right += s }
-        left *= ((nr50 ushr 4) and 7) + 1
-        right *= (nr50 and 7) + 1
-
-        accLeft += (left * dots).toLong()
-        accRight += (right * dots).toLong()
-        accCount += dots
-        sampleCounter += dots.toLong() * sampleRate
-        if (sampleCounter >= CLOCK) {
-            sampleCounter -= CLOCK
-            emitSample()
-        }
+        mixLeft = left * (((nr50 ushr 4) and 7) + 1)
+        mixRight = right * ((nr50 and 7) + 1)
     }
 
     private fun emitSample() {
@@ -128,6 +144,8 @@ class Apu(private val gb: GameBoy, sampleRate: Int) {
         }
         if (addr > 0xFF26) return 0xFF
         val i = addr - 0xFF10
+        if (gba && addr == 0xFF1A) return regs[i] or 0x1F // bank bits are readable on GBA
+        if (gba && addr == 0xFF1C) return regs[i] or 0x1F // 75% volume bit is readable on GBA
         return regs[i] or READ_MASK[i]
     }
 
@@ -143,7 +161,7 @@ class Apu(private val gb: GameBoy, sampleRate: Int) {
         if (addr > 0xFF26) return
         if (!power) {
             // On DMG the length counters stay writable while powered off.
-            if (!gb.cgb) when (addr) {
+            if (!cgb) when (addr) {
                 0xFF11 -> ch1.length = 64 - (value and 0x3F)
                 0xFF16 -> ch2.length = 64 - (value and 0x3F)
                 0xFF1B -> ch3.length = 256 - value
@@ -162,9 +180,13 @@ class Apu(private val gb: GameBoy, sampleRate: Int) {
             0xFF17 -> ch2.writeEnvelope(value)
             0xFF18 -> ch2.freq = (ch2.freq and 0x700) or value
             0xFF19 -> { ch2.freq = (ch2.freq and 0xFF) or ((value and 7) shl 8); ch2.writeControl(value, fsStep) }
-            0xFF1A -> { ch3.dacEnabled = value and 0x80 != 0; if (!ch3.dacEnabled) ch3.enabled = false }
+            0xFF1A -> {
+                ch3.dacEnabled = value and 0x80 != 0
+                if (!ch3.dacEnabled) ch3.enabled = false
+                if (gba) { ch3.twoBanks = value and 0x20 != 0; ch3.bank = (value ushr 6) and 1 }
+            }
             0xFF1B -> ch3.length = 256 - value
-            0xFF1C -> ch3.volumeCode = (value ushr 5) and 3
+            0xFF1C -> { ch3.volumeCode = (value ushr 5) and 3; if (gba) ch3.force75 = value and 0x80 != 0 }
             0xFF1D -> ch3.freq = (ch3.freq and 0x700) or value
             0xFF1E -> { ch3.freq = (ch3.freq and 0xFF) or ((value and 7) shl 8); ch3.writeControl(value, fsStep) }
             0xFF20 -> ch4.length = 64 - (value and 0x3F)
@@ -180,7 +202,7 @@ class Apu(private val gb: GameBoy, sampleRate: Int) {
         if (power && !on) {
             val lengths = intArrayOf(ch1.length, ch2.length, ch3.length, ch4.length)
             for (a in 0xFF10..0xFF25) write(a, 0)
-            if (!gb.cgb) {
+            if (!cgb) {
                 ch1.length = lengths[0]; ch2.length = lengths[1]; ch3.length = lengths[2]; ch4.length = lengths[3]
             }
             ch1.enabled = false; ch2.enabled = false; ch3.enabled = false; ch4.enabled = false
@@ -425,15 +447,26 @@ private class SquareChannel(private val hasSweep: Boolean) : EnvelopeChannel(64)
     }
 }
 
-private class WaveChannel(private val dmg: Boolean) : LengthChannel(256) {
+private class WaveChannel(private val dmg: Boolean, private val gba: Boolean) : LengthChannel(256) {
+    /** Wave RAM (bank 0, the only bank on Game Boy). */
     val ram = ByteArray(16)
+    /** Second bank, GBA only. */
+    private val ram2 = ByteArray(16)
     var volumeCode = 0
     var freq = 0
     var sample = 0
+    /** GBA: play both banks as one 64-sample wave. */
+    var twoBanks = false
+    /** GBA: bank being played; the CPU sees the other one. */
+    var bank = 0
+    /** GBA: fixed 75% volume. */
+    var force75 = false
     private var position = 0
     private var timer = 4096
     /** True when the channel fetched a sample in the current M-cycle (DMG wave RAM access window). */
     private var justRead = false
+
+    private fun bankRam(b: Int) = if (b == 0) ram else ram2
 
     fun step(cycles: Int) {
         justRead = false
@@ -443,13 +476,17 @@ private class WaveChannel(private val dmg: Boolean) : LengthChannel(256) {
             // The access window is the 2-dot APU cycle in which the fetch happened.
             justRead = timer > -2
             timer += (2048 - freq) * 2
-            position = (position + 1) and 31
-            val byte = ram[position ushr 1].toInt()
+            position = (position + 1) and (if (twoBanks) 63 else 31)
+            val source = if (gba) bankRam((bank + (position ushr 5)) and 1) else ram
+            val byte = source[(position and 31) ushr 1].toInt()
             sample = if (position and 1 == 0) (byte ushr 4) and 0x0F else byte and 0x0F
         }
     }
 
-    fun output(): Int = if (enabled) sample ushr VOLUME_SHIFT[volumeCode] else 0
+    fun output(): Int {
+        if (!enabled) return 0
+        return if (force75) sample * 3 / 4 else sample ushr VOLUME_SHIFT[volumeCode]
+    }
 
     override fun onTrigger() {
         // DMG bug: retriggering just before the channel reads corrupts the start of wave RAM.
@@ -465,13 +502,16 @@ private class WaveChannel(private val dmg: Boolean) : LengthChannel(256) {
     // While playing, the CPU sees the byte the channel is currently reading. On DMG that only works in
     // the cycle the channel accesses wave RAM; otherwise reads return 0xFF and writes are dropped.
     fun readRam(i: Int): Int {
+        if (gba) return bankRam(bank xor 1)[i].toInt() and 0xFF
         if (!enabled) return ram[i].toInt() and 0xFF
         if (dmg && !justRead) return 0xFF
         return ram[position ushr 1].toInt() and 0xFF
     }
 
     fun writeRam(i: Int, value: Int) {
-        if (!enabled) {
+        if (gba) {
+            bankRam(bank xor 1)[i] = value.toByte()
+        } else if (!enabled) {
             ram[i] = value.toByte()
         } else if (!dmg || justRead) {
             ram[position ushr 1] = value.toByte()
@@ -483,6 +523,10 @@ private class WaveChannel(private val dmg: Boolean) : LengthChannel(256) {
         w.bytes(ram)
         w.ints(intArrayOf(volumeCode, freq, sample, position, timer))
         w.bool(justRead)
+        if (gba) {
+            w.bytes(ram2)
+            w.bool(twoBanks); w.int(bank); w.bool(force75)
+        }
     }
 
     fun load(r: StateReader) {
@@ -492,6 +536,10 @@ private class WaveChannel(private val dmg: Boolean) : LengthChannel(256) {
         r.intsInto(v)
         volumeCode = v[0]; freq = v[1]; sample = v[2]; position = v[3]; timer = v[4]
         justRead = r.bool()
+        if (gba) {
+            r.bytesInto(ram2)
+            twoBanks = r.bool(); bank = r.int(); force75 = r.bool()
+        }
     }
 
     companion object {

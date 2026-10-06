@@ -26,13 +26,14 @@ import android.window.OnBackInvokedCallback
 import android.window.OnBackInvokedDispatcher
 import com.retroemulator.gb.R
 import com.retroemulator.gb.core.CheatParser
-import com.retroemulator.gb.core.GameBoy
+import com.retroemulator.gb.emu.Buttons
 import com.retroemulator.gb.core.Joypad
 import com.retroemulator.gb.data.CheatStore
 import com.retroemulator.gb.data.Palettes
 import com.retroemulator.gb.data.RomLibrary
 import com.retroemulator.gb.data.Settings
 import com.retroemulator.gb.emu.EmulatorSession
+import com.retroemulator.gb.emu.Machine
 import java.io.File
 import java.util.Date
 
@@ -57,6 +58,9 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     private var openDialogs = 0
     private var resumed = false
     private var sampleRate = 48000
+    private var isGba = false
+    private var screenW = 160
+    private var screenH = 144
     private var vibrator: Vibrator? = null
     private val batteryLock = Any()
     private var backCallback: Any? = null
@@ -102,9 +106,9 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
         }
         setContentView(root)
 
-        val gb = try {
+        val machine = try {
             romData = file.readBytes()
-            createGameBoy().also { restore(it); applyCheats(it) }
+            createMachine().also { restore(it); applyCheats(it) }
         } catch (e: Exception) {
             showFatalError(e.message ?: getString(R.string.error_rom_load))
             return
@@ -117,27 +121,31 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
             getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
         }
 
-        sessionStart(gb)
+        sessionStart(machine)
         library.markPlayed(entry)
         registerBack()
     }
 
-    private fun sessionStart(gb: GameBoy) {
-        session = EmulatorSession(gb, sampleRate, this).also { it.start() }
+    private fun sessionStart(machine: Machine) {
+        session = EmulatorSession(machine, sampleRate, this).also { it.start() }
         applySettings()
     }
 
-    private fun createGameBoy(): GameBoy {
+    private fun createMachine(): Machine {
         sampleRate = EmulatorSession.preferredSampleRate(this)
-        return GameBoy(romData, settings.forceDmg, sampleRate)
+        return Machine.create(romData, settings.forceDmg, sampleRate).also {
+            isGba = it.isGba
+            screenW = it.screenWidth
+            screenH = it.screenHeight
+        }
     }
 
     /** Loads the battery save and, if enabled, the automatic resume state. */
-    private fun restore(gb: GameBoy) {
+    private fun restore(m: Machine) {
         val save = library.saveFile(entry)
-        if (gb.cart.hasBattery && save.exists()) {
+        if (m.hasBattery && save.exists()) {
             try {
-                gb.cart.loadSaveData(save.readBytes())
+                m.loadBattery(save.readBytes())
             } catch (e: Exception) {
                 Toast.makeText(this, R.string.error_save_load, Toast.LENGTH_LONG).show()
             }
@@ -145,7 +153,7 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
         val auto = library.stateFile(entry, 0)
         if (settings.autoResume && auto.exists()) {
             try {
-                gb.loadState(auto.readBytes())
+                m.loadState(auto.readBytes())
             } catch (e: Exception) {
                 auto.delete()
             }
@@ -158,10 +166,7 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
         s.volume = settings.volume / 100f
         s.fastForwardSpeed = settings.fastForwardSpeed
         val palette = Palettes.ALL[settings.paletteIndex]
-        s.withGameBoy { gb ->
-            gb.ppu.setDmgPalette(palette.bg, palette.obj0, palette.obj1)
-            gb.ppu.setColorCorrection(settings.colorCorrection)
-        }
+        s.withMachine { it.applyVideo(palette, settings.colorCorrection) }
         gameView.smoothScaling = settings.smoothScaling
         if (!settings.showFps) gameView.fpsText = null
         controller.hapticsEnabled = settings.haptics
@@ -172,7 +177,7 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     private fun relayout() {
         if (!::root.isInitialized || root.width == 0 || root.height == 0) return
         val layout = ConsoleLayout()
-        layout.compute(root.width, root.height, safeInsets, settings.integerScaling)
+        layout.compute(root.width, root.height, safeInsets, settings.integerScaling, screenW, screenH, shoulders = isGba)
         skin.consoleLayout = layout
         gameView.setScreen(layout.screen)
         controller.consoleLayout = layout
@@ -214,13 +219,13 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
         val s = session ?: return
         s.pause()
         try {
-            s.withGameBoy { gb ->
-                if (gb.cart.hasBattery) {
-                    writeBattery(gb.cart.saveData())
-                    gb.cart.ramDirty = false
+            s.withMachine { m ->
+                if (m.hasBattery) {
+                    writeBattery(m.batteryData())
+                    m.batteryDirty = false
                 }
                 if (settings.autoResume) {
-                    RomLibrary.writeAtomically(library.stateFile(entry, 0), gb.saveState())
+                    RomLibrary.writeAtomically(library.stateFile(entry, 0), m.saveState())
                 }
             }
         } catch (e: Exception) {
@@ -283,7 +288,7 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     // EmulatorSession.Listener (emulator thread)
     // ------------------------------------------------------------------------------------------
 
-    override fun onFrame(pixels: IntArray) = gameView.submitFrame(pixels)
+    override fun onFrame(pixels: IntArray, width: Int, height: Int) = gameView.submitFrame(pixels, width, height)
 
     override fun onFps(fps: Int) {
         if (settings.showFps) runOnUiThread { gameView.fpsText = "$fps fps" }
@@ -357,7 +362,7 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
                 return true
             }
             KeyEvent.KEYCODE_BUTTON_MODE, KeyEvent.KEYCODE_ESCAPE, KeyEvent.KEYCODE_MENU,
-            KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_THUMBL -> {
+            KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_BUTTON_L2, KeyEvent.KEYCODE_BUTTON_THUMBL -> {
                 if (event.action == KeyEvent.ACTION_UP) openMenu()
                 return true
             }
@@ -377,6 +382,9 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
         KeyEvent.KEYCODE_BUTTON_START, KeyEvent.KEYCODE_ENTER -> Joypad.START
         KeyEvent.KEYCODE_BUTTON_SELECT, KeyEvent.KEYCODE_SPACE, KeyEvent.KEYCODE_SHIFT_RIGHT,
         KeyEvent.KEYCODE_DEL -> Joypad.SELECT
+        // GBA shoulders; on the Game Boy L1/R1 keep their menu and fast-forward roles below.
+        KeyEvent.KEYCODE_BUTTON_L1, KeyEvent.KEYCODE_Q -> if (isGba) Buttons.L else 0
+        KeyEvent.KEYCODE_BUTTON_R1, KeyEvent.KEYCODE_E -> if (isGba) Buttons.R else 0
         else -> 0
     }
 
@@ -426,30 +434,20 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     private fun openMenu() {
         if (openDialogs > 0 || session == null) return
         val ff = session?.fastForward ?: false
-        val items = arrayOf(
-            getString(R.string.menu_resume),
-            getString(R.string.menu_save_state),
-            getString(R.string.menu_load_state),
-            getString(if (ff) R.string.menu_ff_off else R.string.menu_ff_on),
-            getString(R.string.menu_cheats),
-            getString(R.string.menu_reset),
-            getString(R.string.settings),
-            getString(R.string.menu_quit),
-        )
+        val items = ArrayList<Pair<String, () -> Unit>>()
+        items += getString(R.string.menu_resume) to {}
+        items += getString(R.string.menu_save_state) to { showSlots(save = true) }
+        items += getString(R.string.menu_load_state) to { showSlots(save = false) }
+        items += getString(if (ff) R.string.menu_ff_off else R.string.menu_ff_on) to { setFastForward(!ff) }
+        // Cheat codes are Game Boy GameShark / Game Genie codes.
+        if (!isGba) items += getString(R.string.menu_cheats) to { showCheats() }
+        items += getString(R.string.menu_reset) to { confirmReset() }
+        items += getString(R.string.settings) to { showSettings() }
+        items += getString(R.string.menu_quit) to { finish() }
         showDialog(
             AlertDialog.Builder(this)
                 .setTitle(entry.title)
-                .setItems(items) { _, which ->
-                    when (which) {
-                        1 -> showSlots(save = true)
-                        2 -> showSlots(save = false)
-                        3 -> setFastForward(!ff)
-                        4 -> showCheats()
-                        5 -> confirmReset()
-                        6 -> showSettings()
-                        7 -> finish()
-                    }
-                }
+                .setItems(items.map { it.first }.toTypedArray()) { _, which -> items[which].second() }
         )
     }
 
@@ -457,12 +455,12 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     // Cheats
     // ------------------------------------------------------------------------------------------
 
-    private fun applyCheats(gb: GameBoy) {
-        gb.cheats.set(cheatStore.activePatches(entry.key))
+    private fun applyCheats(m: Machine) {
+        if (m.supportsCheats) m.setCheats(cheatStore.activePatches(entry.key))
     }
 
     private fun applyCheats() {
-        session?.withGameBoy { applyCheats(it) }
+        session?.withMachine { applyCheats(it) }
     }
 
     private fun showCheats() {
@@ -569,7 +567,7 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     private fun saveSlot(slot: Int) {
         val s = session ?: return
         try {
-            val data = s.withGameBoy { it.saveState() }
+            val data = s.withMachine { it.saveState() }
             RomLibrary.writeAtomically(library.stateFile(entry, slot), data)
             Toast.makeText(this, getString(R.string.state_saved, slot), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
@@ -586,7 +584,7 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
         }
         try {
             val data = f.readBytes()
-            s.withGameBoy { it.loadState(data) }
+            s.withMachine { it.loadState(data) }
             Toast.makeText(this, getString(R.string.state_loaded, slot), Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
             Toast.makeText(this, e.message ?: getString(R.string.error_state_load), Toast.LENGTH_LONG).show()
@@ -606,12 +604,12 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     private fun resetGame() {
         val s = session ?: return
         try {
-            s.withGameBoy { old ->
-                val battery = if (old.cart.hasBattery) old.cart.saveData() else null
-                val fresh = createGameBoy()
-                battery?.let { fresh.cart.loadSaveData(it) }
+            s.withMachine { old ->
+                val battery = if (old.hasBattery) old.batteryData() else null
+                val fresh = createMachine()
+                battery?.let { fresh.loadBattery(it) }
                 applyCheats(fresh)
-                s.replaceGameBoy(fresh)
+                s.replaceMachine(fresh)
             }
             library.stateFile(entry, 0).delete()
             applySettings()

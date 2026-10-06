@@ -12,4 +12,4 @@ Every ROM in this folder is packaged into the APK and appears in the app's game 
 - Each ROM adds its size to the APK. Most Game Boy games are 32 KB–2 MB; the largest are 8 MB.
 - New or changed ROMs are added the next time the updated app starts. If a player removes an included game, it stays removed until you change that ROM file.
 - Unsupported cartridge types (MBC6, MBC7, HuC3, MMM01, TAMA5, Pocket Camera) are skipped.
-- Game Boy Advance games (`.gba`) can't run in this emulator. They are left out of the build and aren't committed to git.
+- Game Boy Advance games (`.gba`) play in the app once a player adds them with **Add games**, but they are not packaged from this folder and are git-ignored, so GBA ROMs placed here stay on your computer.

@@ -15,5 +15,6 @@
     <color name="badge_gb_text">#0F380F</color>
     <color name="badge_gbc">#8B7CF6</color>
     <color name="badge_gbc_only">#F06292</color>
+    <color name="badge_gba">#3F51B5</color>
     <color name="launcher_background">#FFE9A0</color>
 </resources>

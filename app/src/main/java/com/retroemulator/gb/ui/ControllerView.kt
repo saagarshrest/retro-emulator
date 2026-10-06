@@ -11,6 +11,7 @@ import android.view.MotionEvent
 import android.view.View
 import com.retroemulator.gb.R
 import com.retroemulator.gb.core.Joypad
+import com.retroemulator.gb.emu.Buttons
 import com.retroemulator.gb.ui.pixel.PixelPainter
 import com.retroemulator.gb.ui.pixel.PixelPainter.Companion.INK
 import kotlin.math.atan2
@@ -133,6 +134,12 @@ class ControllerView(context: Context) : View(context) {
     private fun hitButtons(l: ConsoleLayout, x: Float, y: Float): Int {
         val u = l.u
         val pad = 3.5f * u
+        if (!l.shoulderL.isEmpty) {
+            val sl = l.shoulderL
+            val sr = l.shoulderR
+            if (x >= sl.left - pad && x <= sl.right + pad && y >= sl.top - pad && y <= sl.bottom + pad) return Buttons.L
+            if (x >= sr.left - pad && x <= sr.right + pad && y >= sr.top - pad && y <= sr.bottom + pad) return Buttons.R
+        }
         val s = l.select
         val st = l.start
         if (x >= s.left - pad && x <= s.right + pad && y >= s.top - pad && y <= s.bottom + pad * 1.6f) return Joypad.SELECT
@@ -174,8 +181,23 @@ class ControllerView(context: Context) : View(context) {
         drawRoundButton(canvas, l.btnA, l.buttonSize, u, "A", BTN_A, BTN_A_LIGHT, BTN_A_DARK, mask and Joypad.A != 0)
         drawPill(canvas, l, l.select, u, context.getString(R.string.label_select), mask and Joypad.SELECT != 0)
         drawPill(canvas, l, l.start, u, context.getString(R.string.label_start), mask and Joypad.START != 0)
+        if (!l.shoulderL.isEmpty) {
+            drawShoulder(canvas, l.shoulderL, u, "L", mask and Buttons.L != 0)
+            drawShoulder(canvas, l.shoulderR, u, "R", mask and Buttons.R != 0)
+        }
         drawMenu(canvas, l.menu, u)
         drawFastForward(canvas, l.fastForward, u)
+    }
+
+    /** A wide pill with its label inside (the GBA shoulder buttons). */
+    private fun drawShoulder(canvas: Canvas, r: android.graphics.RectF, u: Float, label: String, pressed: Boolean) {
+        val shift = if (pressed) u else 0f
+        painter.box(canvas, r.left + u, r.top + u, r.right + u, r.bottom + u, u, 2, SHADOW, outlineUnits = 0)
+        painter.box(canvas, r.left + shift, r.top + shift, r.right + shift, r.bottom + shift, u, 2,
+            if (pressed) PILL_PRESSED else PILL_TOP, if (pressed) PILL_PRESSED else PILL_BOTTOM)
+        text.color = SHOULDER_LABEL
+        text.textSize = 4.2f * u
+        canvas.drawText(label, r.centerX() + shift, r.centerY() + shift - (text.descent() + text.ascent()) / 2f, text)
     }
 
     private fun drawDpad(canvas: Canvas, l: ConsoleLayout, u: Float) {
@@ -309,5 +331,6 @@ class ControllerView(context: Context) : View(context) {
         private const val FF_ACTIVE = 0xFFFFD54A.toInt()
         private const val FF_ACTIVE_DARK = 0xFFF0A92A.toInt()
         private const val TEXT = 0xFF6B3A12.toInt()
+        private const val SHOULDER_LABEL = 0xFFE6E6EE.toInt()
     }
 }

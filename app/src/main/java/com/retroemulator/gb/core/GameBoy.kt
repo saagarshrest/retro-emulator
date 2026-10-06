@@ -17,7 +17,7 @@ class GameBoy(romData: ByteArray, forceDmg: Boolean = false, sampleRate: Int = 4
     var speedSwitchArmed = false
 
     val timer = Timer(this)
-    val apu = Apu(this, sampleRate)
+    val apu = Apu(cgb, sampleRate)
     val ppu = Ppu(this)
     val joypad = Joypad(this)
     val serial = Serial(this)

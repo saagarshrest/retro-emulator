@@ -138,7 +138,7 @@ class RomLibrary(private val context: Context) {
             data = bytes
         }
 
-        validate(data)
+        validate(displayName, data)
         var safeName = sanitize(displayName)
         val ext = safeName.substringAfterLast('.', "").lowercase()
         if (ext !in ROM_EXTENSIONS) {
@@ -153,9 +153,18 @@ class RomLibrary(private val context: Context) {
         return readEntry(target) ?: throw IOException("Could not read the imported ROM")
     }
 
-    private fun validate(data: ByteArray) {
+    private fun validate(name: String, data: ByteArray) {
+        if (name.substringAfterLast('.', "").lowercase() == "gba") {
+            throw IOException("Game Boy Advance games aren't supported. This app plays Game Boy and Game Boy Color games.")
+        }
         if (data.size < 0x150) throw IOException("This file is too small to be a Game Boy ROM")
-        if (data.size > 16 * 1024 * 1024) throw IOException("This file is too large to be a Game Boy ROM")
+        if (data.size > 8 * 1024 * 1024) throw IOException("This file is too large to be a Game Boy ROM")
+        // Every Game Boy cartridge carries the Nintendo logo in its header (the boot ROM checks it).
+        for (i in NINTENDO_LOGO.indices) {
+            if (data[0x104 + i] != NINTENDO_LOGO[i].toByte()) {
+                throw IOException("This isn't a Game Boy or Game Boy Color ROM")
+            }
+        }
         // Throws for mappers the emulator does not support, with a readable message.
         Cartridge.create(data)
     }
@@ -216,6 +225,12 @@ class RomLibrary(private val context: Context) {
         private const val KEY_BUNDLED = "bundled:"
         private const val KEY_BUNDLED_SEEN = "bundled_seen"
         private const val KEY_BUNDLED_SCAN = "bundled_scan"
+
+        /** First half of the Nintendo logo in the cartridge header (what the Game Boy Color boot ROM checks). */
+        private val NINTENDO_LOGO = intArrayOf(
+            0xCE, 0xED, 0x66, 0x66, 0xCC, 0x0D, 0x00, 0x0B, 0x03, 0x73, 0x00, 0x83,
+            0x00, 0x0C, 0x00, 0x0D, 0x00, 0x08, 0x11, 0x1F, 0x88, 0x89, 0x00, 0x0E,
+        )
 
         fun writeAtomically(target: File, data: ByteArray) {
             val tmp = File(target.parentFile, target.name + ".tmp")

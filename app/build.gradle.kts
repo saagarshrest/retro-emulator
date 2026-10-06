@@ -19,8 +19,8 @@ android {
         applicationId = "com.retroemulator.gb"
         minSdk = 26
         targetSdk = 36
-        versionCode = 2
-        versionName = "1.1.0"
+        versionCode = 3
+        versionName = "1.2.0"
     }
 
     signingConfigs {
@@ -47,14 +47,6 @@ android {
         }
     }
 
-    sourceSets {
-        getByName("main") {
-            // ROMs dropped into <project>/games are packaged into the APK and show up in the
-            // game list as "Included" games (see games/README.md).
-            assets.directories.add(rootProject.file("games").path)
-        }
-    }
-
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -68,6 +60,38 @@ android {
             it.systemProperty("testout.dir", layout.buildDirectory.dir("test-screens").get().asFile.absolutePath)
             it.testLogging { events("passed", "skipped", "failed"); showStandardStreams = false }
         }
+    }
+}
+
+/**
+ * Copies the Game Boy / Game Boy Color ROMs from <project>/games into a generated assets folder, so
+ * they ship in the APK and show up as "Included" games (see games/README.md). Other files, such as
+ * Game Boy Advance ROMs, are left out.
+ */
+abstract class BundleGamesTask : DefaultTask() {
+    @get:InputFiles
+    @get:PathSensitive(PathSensitivity.NAME_ONLY)
+    abstract val roms: ConfigurableFileCollection
+
+    @get:OutputDirectory
+    abstract val outputDir: DirectoryProperty
+
+    @TaskAction
+    fun copyRoms() {
+        val out = outputDir.get().asFile
+        out.deleteRecursively()
+        out.mkdirs()
+        roms.files.forEach { it.copyTo(File(out, it.name), overwrite = true) }
+    }
+}
+
+val bundleGames = tasks.register<BundleGamesTask>("bundleGames") {
+    roms.from(fileTree(rootProject.file("games")) { include("*.gb", "*.gbc", "*.cgb", "*.sgb", "*.zip") })
+}
+
+androidComponents {
+    onVariants { variant ->
+        variant.sources.assets?.addGeneratedSourceDirectory(bundleGames, BundleGamesTask::outputDir)
     }
 }
 

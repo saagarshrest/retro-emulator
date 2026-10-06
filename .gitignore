@@ -24,3 +24,6 @@ Thumbs.db
 
 # Test ROM suites and homebrew games are downloaded, never committed (see README)
 testroms/
+
+# Game Boy Advance ROMs cannot run in this Game Boy / Game Boy Color emulator
+games/*.gba

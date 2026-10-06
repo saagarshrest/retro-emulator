@@ -1,0 +1,26 @@
+# Gradle / Android build output
+.gradle/
+.kotlin/
+build/
+captures/
+.cxx/
+*.apk
+*.aab
+
+# Machine-specific configuration and secrets
+local.properties
+keystore.properties
+*.jks
+*.keystore
+
+# IDE
+.idea/
+*.iml
+.vscode/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Test ROM suites and homebrew games are downloaded, never committed (see README)
+testroms/

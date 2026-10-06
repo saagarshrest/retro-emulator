@@ -1,0 +1,81 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Retro Emulator</string>
+    <string name="library_subtitle">Game Boy &amp; Game Boy Color</string>
+    <string name="add_games">Add games</string>
+    <string name="empty_title">No games yet</string>
+    <string name="empty_body">Add your own .gb or .gbc ROM files (zipped files work too). Games and saves stay on this device.</string>
+    <string name="more_options">More options</string>
+    <string name="never_played">New</string>
+    <string name="played_ago">Played %1$s</string>
+    <string name="played_just_now">Played just now</string>
+    <string name="system_gb">Game Boy</string>
+    <string name="system_gbc">Game Boy Color</string>
+    <string name="system_gbc_only">Game Boy Color only</string>
+    <string name="games_added">%1$d games added</string>
+    <string name="game_added">Added %1$s</string>
+    <string name="import_failed">Could not add %1$s: %2$s</string>
+
+    <string name="option_play">Play</string>
+    <string name="option_import_save">Import save file…</string>
+    <string name="option_export_save">Export save file…</string>
+    <string name="option_delete_save">Delete save data</string>
+    <string name="option_delete">Remove game</string>
+    <string name="delete_title">Remove %1$s?</string>
+    <string name="delete_message">The ROM, its save file and all save states will be deleted from this device.</string>
+    <string name="delete_save_title">Delete save data?</string>
+    <string name="delete_save_message">The in-game save for %1$s will be deleted. Save state slots are kept.</string>
+    <string name="delete">Delete</string>
+    <string name="save_imported">Save file imported</string>
+    <string name="save_exported">Save file exported</string>
+    <string name="save_deleted">Save data deleted</string>
+
+    <string name="menu_resume">Resume</string>
+    <string name="menu_save_state">Save state</string>
+    <string name="menu_load_state">Load state</string>
+    <string name="menu_ff_on">Fast forward</string>
+    <string name="menu_ff_off">Normal speed</string>
+    <string name="menu_reset">Reset</string>
+    <string name="menu_cheats">Cheats</string>
+    <string name="cheat_add">Add cheat</string>
+    <string name="cheats_empty">No cheats yet. Add GameShark (e.g. 010238CD) or Game Genie (e.g. 00A-17B-C49) codes.\n\nTick a cheat to turn it on; long-press to delete it.</string>
+    <string name="cheat_delete_title">Delete \"%1$s\"?</string>
+    <string name="cheat_name_hint">Name (optional)</string>
+    <string name="cheat_code_hint">Code, e.g. 010238CD or 00A-17B-C49</string>
+    <string name="menu_quit">Quit game</string>
+    <string name="slot_label">Slot %1$d  ·  %2$s</string>
+    <string name="slot_empty">Empty</string>
+    <string name="slot_is_empty">That slot is empty</string>
+    <string name="state_saved">Saved to slot %1$d</string>
+    <string name="state_loaded">Loaded slot %1$d</string>
+    <string name="reset_title">Reset game?</string>
+    <string name="reset_message">Progress since your last in-game save will be lost.</string>
+
+    <string name="settings">Settings</string>
+    <string name="done">Done</string>
+    <string name="settings_audio">Audio</string>
+    <string name="settings_sound">Sound</string>
+    <string name="settings_volume">Volume: %1$d%%</string>
+    <string name="settings_display">Display</string>
+    <string name="settings_palette">Game Boy palette</string>
+    <string name="settings_color_correction">Game Boy Color color correction</string>
+    <string name="settings_integer_scaling">Integer scaling (sharpest pixels)</string>
+    <string name="settings_smooth">Smooth scaling</string>
+    <string name="settings_show_fps">Show FPS</string>
+    <string name="settings_controls">Controls</string>
+    <string name="settings_haptics">Vibrate on button press</string>
+    <string name="settings_rumble">Rumble (supported games)</string>
+    <string name="settings_opacity">Landscape control opacity: %1$d%%</string>
+    <string name="settings_emulation">Emulation</string>
+    <string name="settings_auto_resume">Auto-save and resume where you left off</string>
+    <string name="settings_ff_speed">Fast-forward speed</string>
+    <string name="settings_force_dmg">Play color games in original Game Boy mode</string>
+    <string name="settings_force_dmg_hint">Applies the next time a game starts. Games that only run on Game Boy Color ignore it.</string>
+
+    <string name="error_title">Can\'t start this game</string>
+    <string name="error_rom_missing">The game file is missing.</string>
+    <string name="error_rom_load">The ROM could not be loaded.</string>
+    <string name="error_save_load">The save file could not be read.</string>
+    <string name="error_save_write">Could not write save data.</string>
+    <string name="error_state_load">That save state could not be loaded.</string>
+</resources>

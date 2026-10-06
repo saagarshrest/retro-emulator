@@ -10,8 +10,10 @@ import kotlin.math.min
 /**
  * Geometry of the on-screen handheld, shared by the skin, the game view and the controls.
  *
- * Everything is designed on a grid of "art pixels" of [u] screen pixels: portrait layouts are 120
- * units wide, landscape layouts 100 units tall. [u] is an integer so the pixel art stays crisp.
+ * The handheld's body fills the whole screen, and the screen frame takes all the width (portrait) or
+ * height (landscape) it can. Everything is placed on a grid of "art pixels" of [u] screen pixels:
+ * portrait layouts are 120 units wide, landscape layouts at least 100 units tall. [u] is an integer
+ * so the pixel art stays crisp.
  */
 class ConsoleLayout {
     var valid = false
@@ -51,9 +53,6 @@ class ConsoleLayout {
     val shoulderR = RectF()
     val speaker = RectF()
 
-    class Decoration(val kind: Int, val x: Float, val y: Float, val size: Int)
-    val decorations = ArrayList<Decoration>()
-
     private fun px(x: Float) = ox + x * u
     private fun py(y: Float) = oy + y * u
     private fun rectU(out: RectF, l: Float, t: Float, r: Float, b: Float) = out.set(px(l), py(t), px(r), py(b))
@@ -67,10 +66,10 @@ class ConsoleLayout {
         srcW: Int = 160, srcH: Int = 144, shoulders: Boolean = false,
     ) {
         if (width <= 0 || height <= 0) return
-        decorations.clear()
         aspect = srcH.toFloat() / srcW
         shoulderL.setEmpty()
         shoulderR.setEmpty()
+        body.set(0f, 0f, width.toFloat(), height.toFloat())
         landscape = width > height * 1.25f
         if (landscape) computeLandscape(width, height, safe, shoulders) else computePortrait(width, height, safe, shoulders)
 
@@ -93,30 +92,35 @@ class ConsoleLayout {
         ox = floor((width - 120f * u) / 2f)
         oy = 0f
         val units = height / u
-        val top = safe.top / u + 3f
-        val bottom = units - safe.bottom / u - 3f
+        val top = safe.top / u + 2f
+        val bottom = units - safe.bottom / u - 2f
         val border = 2f
-        val frameTop = top + 15f
-        val controlsMin = 82f
-        val sceneMin = 12f
-        val sceneMax = 46f
+        val frameTop = top + 12f
+        val controlsMin = 80f
+        val sceneMax = 40f
 
-        var lcdW = 98f
+        // The screen frame spans the full width; the picture only shrinks if the controls need room.
+        var lcdW = 120f - 2 * border
         var lcdH = lcdW * aspect
-        val avail = bottom - frameTop - 2 * border - 5f
-        if (avail - lcdH - sceneMin < controlsMin) {
-            lcdH = max(40f, avail - sceneMin - controlsMin)
+        val avail = bottom - frameTop - 2 * border - 3f
+        if (avail - lcdH < controlsMin) {
+            lcdH = max(40f, avail - controlsMin)
             lcdW = lcdH / aspect
         }
-        val sceneH = (avail - lcdH - controlsMin).coerceIn(sceneMin, sceneMax)
+        // Leftover height goes to the park scene under the picture, if there's enough for it.
+        var sceneH = min(avail - lcdH - controlsMin, sceneMax)
+        if (sceneH < 12f) sceneH = 0f
         val controlsH = max(avail - lcdH - sceneH, 60f)
 
-        rectU(body, 4f, top + 6f, 116f, bottom)
-        rectU(tab, 14f, top, 106f, top + 11f)
+        rectU(tab, 14f, top, 106f, top + 10f)
         val half = lcdW / 2f
         rectU(frame, 60f - half - border, frameTop, 60f + half + border, frameTop + 2 * border + lcdH + sceneH)
         rectU(gameArea, 60f - half, frameTop + border, 60f + half, frameTop + border + lcdH)
-        rectU(scene, 60f - half, frameTop + border + lcdH, 60f + half, frameTop + border + lcdH + sceneH)
+        if (sceneH > 0f) {
+            rectU(scene, 60f - half, frameTop + border + lcdH, 60f + half, frameTop + border + lcdH + sceneH)
+        } else {
+            scene.setEmpty()
+        }
 
         // Controls, laid out like the reference handheld: d-pad left, B/A right, pills between.
         val cTop = frameTop + 2 * border + lcdH + sceneH + 3f
@@ -142,30 +146,21 @@ class ConsoleLayout {
             pointU(fastForward, 60f, cTop + 4.5f)
             barcode.setEmpty()
         }
-
-        val frameMidY = frameTop + (lcdH + sceneH) * 0.3f
-        decorations += Decoration(COIN, px(15f), py(top + 1.5f), 9)
-        decorations += Decoration(HEART, px(5f), py(frameMidY), 1)
-        decorations += Decoration(SPARKLE, px(1.5f), py(frameMidY - 3f), 1)
-        decorations += Decoration(COIN, px(5f), py(rowY + 6f), 11)
-        decorations += Decoration(COIN, px(7f), py(rowY - 8f), 8)
-        decorations += Decoration(SPARKLE, px(3f), py(rowY - 18f), 1)
-        decorations += Decoration(SPARKLE, px(14.5f), py(rowY + 1f), 1)
     }
 
     private fun computeLandscape(width: Int, height: Int, safe: Rect, shoulders: Boolean) {
         u = max(2f, floor(height / 100f))
         ox = 0f
-        oy = floor((height - 100f * u) / 2f)
-        val units = width / u
-        val left = safe.left / u + 3f
-        val right = units - safe.right / u - 3f
-        val top = 4f + safe.top / u
-        val bottom = 96f - safe.bottom / u
+        oy = 0f
+        val left = safe.left / u + 2f
+        val right = width / u - safe.right / u - 2f
+        val top = safe.top / u + 2f
+        val bottom = height / u - safe.bottom / u - 2f
         val border = 2f
-        val zoneMin = 46f
+        val zoneMin = 40f
 
-        var lcdH = (bottom - top) - 2 * border - 8f
+        // The screen frame spans the full height unless the side controls need more width.
+        var lcdH = (bottom - top) - 2 * border
         var lcdW = lcdH / aspect
         val maxW = (right - left) - 2 * zoneMin - 2 * border
         if (lcdW > maxW) {
@@ -175,7 +170,6 @@ class ConsoleLayout {
         val mid = (left + right) / 2f
         val cy = (top + bottom) / 2f
 
-        rectU(body, left, top, right, bottom)
         tab.setEmpty()
         scene.setEmpty()
         rectU(frame, mid - lcdW / 2f - border, cy - lcdH / 2f - border, mid + lcdW / 2f + border, cy + lcdH / 2f + border)
@@ -200,18 +194,6 @@ class ConsoleLayout {
             rectU(shoulderL, zoneL - 11f, top + 19f, zoneL + 11f, top + 26f)
             rectU(shoulderR, zoneR - 11f, top + 19f, zoneR + 11f, top + 26f)
         }
-        rectU(speaker, right - 25f, bottom - 26f, right - 7f, bottom - 18f)
-
-        decorations += Decoration(COIN, px(left + 1f), py(bottom - 6f), 10)
-        decorations += Decoration(COIN, px(left + 5f), py(bottom - 15f), 7)
-        decorations += Decoration(SPARKLE, px(left + 12f), py(bottom - 9f), 1)
-        decorations += Decoration(HEART, px(right - 1f), py(top + 26f), 1)
-        decorations += Decoration(SPARKLE, px(right - 0.5f), py(top + 20f), 1)
-    }
-
-    companion object {
-        const val COIN = 0
-        const val HEART = 1
-        const val SPARKLE = 2
+        rectU(speaker, right - 25f, bottom - 33f, right - 7f, bottom - 25f)
     }
 }

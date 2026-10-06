@@ -1,6 +1,6 @@
 # Retro Emulator
 
-A fast, accurate **Game Boy, Game Boy Color and Game Boy Advance emulator for Android**, written from scratch in Kotlin with no third-party dependencies. Games play inside a pixel-art handheld: an orange console with a chunky ink outline, a little park scene under the screen, coins and a heart.
+A fast, accurate **Game Boy, Game Boy Color and Game Boy Advance emulator for Android**, written from scratch in Kotlin with no third-party dependencies. Games play inside a full-screen pixel-art handheld: an orange console whose screen takes all the width it can, with a little park scene under the picture.
 
 <p align="center">
   <img src="docs/screenshots/game.png" width="24%" alt="Playing µCity on the pixel-art handheld" />

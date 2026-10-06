@@ -11,7 +11,7 @@ import com.retroemulator.gb.ui.pixel.PixelPainter.Companion.INK
 import kotlin.math.max
 import kotlin.math.min
 
-/** Static artwork of the handheld: body, name tab, screen frame, scenery and decorations. */
+/** Static artwork of the handheld: body, name tab, screen frame and scenery. */
 class ConsoleSkinView(context: Context) : View(context) {
     private val painter = PixelPainter()
     private val labelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
@@ -38,22 +38,12 @@ class ConsoleSkinView(context: Context) : View(context) {
         if (!l.scene.isEmpty) drawScene(canvas, l, u)
         if (!l.barcode.isEmpty) drawBarcode(canvas, l, u)
         if (!l.speaker.isEmpty) drawSpeaker(canvas, l, u)
-        for (d in l.decorations) {
-            when (d.kind) {
-                ConsoleLayout.COIN -> drawCoin(canvas, d.x, d.y, d.size, u)
-                ConsoleLayout.HEART -> painter.sprite(canvas, HEART, PALETTE, d.x - 4.5f * u, d.y - 4f * u, u)
-                ConsoleLayout.SPARKLE -> painter.sprite(canvas, SPARKLE, PALETTE, d.x - 2.5f * u, d.y - 2.5f * u, u)
-            }
-        }
     }
 
+    /** The body fills the whole screen edge to edge, so it has no outline or corners of its own. */
     private fun drawBody(canvas: Canvas, l: ConsoleLayout, u: Float) {
         val b = l.body
-        painter.box(canvas, b.left, b.top, b.right, b.bottom, u, 4, BODY_TOP, BODY_BOTTOM)
-        // Bevel: light left edge, darker right and bottom edges.
-        painter.rect(canvas, b.left + u, b.top + 4 * u, b.left + 2 * u, b.bottom - 4 * u, BODY_LIGHT)
-        painter.rect(canvas, b.right - 2 * u, b.top + 4 * u, b.right - u, b.bottom - 4 * u, BODY_DARK)
-        painter.rect(canvas, b.left + 4 * u, b.bottom - 2 * u, b.right - 4 * u, b.bottom - u, BODY_DARK)
+        painter.box(canvas, b.left, b.top, b.right, b.bottom, u, 0, BODY_TOP, BODY_BOTTOM, outlineUnits = 0)
     }
 
     private fun drawTab(canvas: Canvas, l: ConsoleLayout, u: Float) {
@@ -195,17 +185,10 @@ class ConsoleSkinView(context: Context) : View(context) {
         }
     }
 
-    private fun drawCoin(canvas: Canvas, x: Float, y: Float, size: Int, u: Float) {
-        painter.disc(canvas, x, y, size, u, COIN, INK, COIN_LIGHT, COIN_DARK)
-        if (size >= 8) painter.disc(canvas, x, y, size - 4, u, COIN_INNER, COIN_DARK)
-    }
-
     companion object {
         private const val BACKGROUND = 0xFFFFF8E6.toInt()
         private const val BODY_TOP = 0xFFFFD877.toInt()
         private const val BODY_BOTTOM = 0xFFFF9A3E.toInt()
-        private const val BODY_LIGHT = 0x66FFFFFF
-        private const val BODY_DARK = 0x33B4460A
         private const val TAB_TOP = 0xFFFFEDB0.toInt()
         private const val TAB_BOTTOM = 0xFFFFD45E.toInt()
         private const val LCD = 0xFF101010.toInt()
@@ -227,10 +210,6 @@ class ConsoleSkinView(context: Context) : View(context) {
         private const val BUSH_LIGHT = 0xFF9EDD7B.toInt()
         private const val WOOD = 0xFF8C5A2E.toInt()
         private const val WOOD_DARK = 0xFF5C3518.toInt()
-        private const val COIN = 0xFFF8C33E.toInt()
-        private const val COIN_LIGHT = 0xFFFFF0A2.toInt()
-        private const val COIN_DARK = 0xFFD9961A.toInt()
-        private const val COIN_INNER = 0xFFFBD25E.toInt()
 
         private val BARCODE = intArrayOf(2, 1, 1, 1, 3, 2, 1, 1, 2, 1, 1, 2, 3, 1, 1, 1, 2, 2, 1, 1, 3, 1, 2, 1)
 
@@ -248,12 +227,8 @@ class ConsoleSkinView(context: Context) : View(context) {
             'P' to 0xFFFFCDD2.toInt(), // ribbon
             'G' to 0xFFF7A33A.toInt(), // small gift
             'g' to 0xFFD9822B.toInt(),
-            'H' to 0xFFF48FB1.toInt(), // heart
-            'h' to 0xFFE0607F.toInt(),
-            'W' to 0xFFFFFFFF.toInt(),
             'C' to 0xFFFFFFFF.toInt(), // cloud
             'c' to 0xFFD3E9F7.toInt(),
-            '*' to 0xFF6B6B6B.toInt(), // sparkle
         )
 
         val KID = arrayOf(
@@ -280,23 +255,6 @@ class ConsoleSkinView(context: Context) : View(context) {
             "GGgG",
             "GGgG",
             "ggg.",
-        )
-        val HEART = arrayOf(
-            ".KK...KK.",
-            "KHHK.KHHK",
-            "KHWHKHHHK",
-            "KHHHHHHhK",
-            ".KHHHHhK.",
-            "..KHHhK..",
-            "...KhK...",
-            "....K....",
-        )
-        val SPARKLE = arrayOf(
-            "..*..",
-            "..*..",
-            "**.**",
-            "..*..",
-            "..*..",
         )
         val CLOUD = arrayOf(
             "....CCCC..........",

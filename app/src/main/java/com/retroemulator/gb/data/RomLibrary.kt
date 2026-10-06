@@ -28,6 +28,8 @@ class RomLibrary(private val context: Context) {
         val cgbOnly: Boolean,
         val mapper: String,
         val lastPlayed: Long,
+        /** Shipped inside the APK from the project's games/ folder. */
+        val bundled: Boolean,
     ) {
         val key: String get() = file.nameWithoutExtension
     }
@@ -53,6 +55,7 @@ class RomLibrary(private val context: Context) {
                 cgbOnly = header.cgbOnly,
                 mapper = header.mapperName,
                 lastPlayed = meta.getLong("played:" + file.name, 0L),
+                bundled = meta.getBoolean(KEY_BUNDLED + file.name, false),
             )
         } catch (e: IOException) {
             null
@@ -71,13 +74,53 @@ class RomLibrary(private val context: Context) {
 
     /** Imports a ROM (optionally inside a .zip) from a content Uri. Returns the stored entry. */
     fun import(uri: Uri): RomEntry {
-        val resolver = context.contentResolver
-        var displayName = queryName(uri) ?: "game.gb"
-        var data = resolver.openInputStream(uri)?.use { input ->
-            val bytes = input.readBytes()
-            bytes
-        } ?: throw IOException("Could not open the selected file")
+        val displayName = queryName(uri) ?: "game.gb"
+        val data = context.contentResolver.openInputStream(uri)?.use { it.readBytes() }
+            ?: throw IOException("Could not open the selected file")
+        return store(displayName, data)
+    }
 
+    /**
+     * Copies ROMs packaged in the APK (the project's games/ folder) into the library. Runs a scan only
+     * after the app was installed or updated. Each ROM is added once per content version, so a game
+     * the player removes stays removed until that ROM file changes.
+     */
+    fun installBundledGames(): Int {
+        val updated = try {
+            context.packageManager.getPackageInfo(context.packageName, 0).lastUpdateTime
+        } catch (e: Exception) {
+            0L
+        }
+        if (meta.getLong(KEY_BUNDLED_SCAN, -1L) == updated) return 0
+
+        val assets = context.assets
+        val names = (assets.list("") ?: emptyArray())
+            .filter { it.substringAfterLast('.', "").lowercase() in ROM_EXTENSIONS + "zip" }
+        val seen = meta.getStringSet(KEY_BUNDLED_SEEN, emptySet())!!.toMutableSet()
+        val editor = meta.edit()
+        var added = 0
+        for (name in names) {
+            try {
+                val data = assets.open(name).use { it.readBytes() }
+                val crc = java.util.zip.CRC32().apply { update(data) }.value
+                val stamp = "$name:$crc"
+                if (stamp in seen) continue
+                seen += stamp
+                val entry = store(name, data)
+                editor.putBoolean(KEY_BUNDLED + entry.file.name, true)
+                added++
+            } catch (e: Exception) {
+                android.util.Log.w("RomLibrary", "Skipping included game $name: ${e.message}")
+            }
+        }
+        editor.putStringSet(KEY_BUNDLED_SEEN, seen).putLong(KEY_BUNDLED_SCAN, updated).apply()
+        return added
+    }
+
+    /** Validates and stores ROM bytes (unpacking .zip files) under a sanitized version of [name]. */
+    private fun store(name: String, bytes: ByteArray): RomEntry {
+        var displayName = name
+        var data = bytes
         if (data.size >= 4 && data[0] == 'P'.code.toByte() && data[1] == 'K'.code.toByte()) {
             var found: Pair<String, ByteArray>? = null
             ZipInputStream(ByteArrayInputStream(data)).use { zip ->
@@ -138,7 +181,7 @@ class RomLibrary(private val context: Context) {
         saveFile(entry).delete()
         for (slot in 0..STATE_SLOTS) stateFile(entry, slot).delete()
         CheatStore(context).delete(entry.key)
-        meta.edit().remove("played:" + entry.file.name).apply()
+        meta.edit().remove("played:" + entry.file.name).remove(KEY_BUNDLED + entry.file.name).apply()
     }
 
     fun saveFile(entry: RomEntry) = File(saveDir, entry.key + ".sav")
@@ -170,6 +213,9 @@ class RomLibrary(private val context: Context) {
     companion object {
         val ROM_EXTENSIONS = setOf("gb", "gbc", "cgb", "sgb", "dmg")
         const val STATE_SLOTS = 5
+        private const val KEY_BUNDLED = "bundled:"
+        private const val KEY_BUNDLED_SEEN = "bundled_seen"
+        private const val KEY_BUNDLED_SCAN = "bundled_scan"
 
         fun writeAtomically(target: File, data: ByteArray) {
             val tmp = File(target.parentFile, target.name + ".tmp")

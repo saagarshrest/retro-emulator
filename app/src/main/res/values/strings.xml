@@ -14,6 +14,7 @@
     <string name="never_played">New</string>
     <string name="played_ago">Played %1$s</string>
     <string name="played_just_now">Played just now</string>
+    <string name="included_game">Included</string>
     <string name="system_gb">Game Boy</string>
     <string name="system_gbc">Game Boy Color</string>
     <string name="system_gbc_only">Game Boy Color only</string>

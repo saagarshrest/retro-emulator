@@ -104,6 +104,7 @@ class MainActivity : Activity() {
 
     private fun refresh() {
         io.execute {
+            library.installBundledGames()
             val items = library.list()
             main.post {
                 adapter.items = items
@@ -288,7 +289,8 @@ class MainActivity : Activity() {
                     DateUtils.getRelativeTimeSpanString(entry.lastPlayed, now, DateUtils.MINUTE_IN_MILLIS),
                 )
             }
-            view.findViewById<TextView>(R.id.details).text = "$system  ·  $played"
+            val details = if (entry.bundled) "${getString(R.string.included_game)}  ·  $system  ·  $played" else "$system  ·  $played"
+            view.findViewById<TextView>(R.id.details).text = details
 
             val badge = view.findViewById<TextView>(R.id.badge)
             badge.text = if (entry.cgb) "GBC" else "GB"

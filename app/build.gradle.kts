@@ -47,6 +47,14 @@ android {
         }
     }
 
+    sourceSets {
+        getByName("main") {
+            // ROMs dropped into <project>/games are packaged into the APK and show up in the
+            // game list as "Included" games (see games/README.md).
+            assets.directories.add(rootProject.file("games").path)
+        }
+    }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17

@@ -69,6 +69,10 @@ The core is checked against the standard hardware test suites from [c-sp/game-bo
 | `dmg-acid2`, `cgb-acid2` | ✅ pixel-perfect |
 | Mooneye acceptance + MBC suites (DMG) | ✅ 93 / 94 (`timer/rapid_toggle` fails) |
 
+## Including games in the app
+
+Put `.gb`, `.gbc` or `.zip` ROMs in the [`games/`](games/) folder and rebuild. They are packaged into the APK and appear in the game list automatically, marked **Included**. Only include games you have the right to distribute. See [games/README.md](games/README.md) for details.
+
 ## Building
 
 Requirements: JDK 17 or newer and the Android SDK (platform 36). Android Studio's bundled JDK works.

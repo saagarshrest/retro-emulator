@@ -1,18 +1,19 @@
 # Retro Emulator
 
-A fast, accurate **Game Boy and Game Boy Color emulator for Android**, written from scratch in Kotlin with no third-party dependencies. The release APK is under 100 KB.
+A fast, accurate **Game Boy and Game Boy Color emulator for Android**, written from scratch in Kotlin with no third-party dependencies. Games play inside a pixel-art handheld: an orange console with a chunky ink outline, a little park scene under the screen, coins and a heart.
 
 <p align="center">
-  <img src="docs/screenshots/library.png" width="23%" alt="Game library" />
-  <img src="docs/screenshots/game.png" width="23%" alt="Playing µCity in portrait" />
-  <img src="docs/screenshots/menu.png" width="23%" alt="In-game menu" />
-  <img src="docs/screenshots/settings.png" width="23%" alt="Settings" />
+  <img src="docs/screenshots/game.png" width="24%" alt="Playing µCity on the pixel-art handheld" />
+  <img src="docs/screenshots/game2.png" width="24%" alt="Playing Libbet and the Magic Floor" />
+  <img src="docs/screenshots/library.png" width="24%" alt="Game library" />
+  <img src="docs/screenshots/menu.png" width="24%" alt="In-game menu" />
 </p>
 <p align="center">
-  <img src="docs/screenshots/landscape.png" width="70%" alt="Landscape mode with translucent controls" />
+  <img src="docs/screenshots/landscape.png" width="66%" alt="Landscape layout with controls either side of the screen" />
+  <img src="docs/screenshots/settings.png" width="24%" alt="Settings" />
 </p>
 
-<sub>Screenshots show <a href="https://github.com/AntonioND/ucity">µCity</a>, an open-source GBC game by AntonioND.</sub>
+<sub>Screenshots show the open-source homebrew games <a href="https://github.com/AntonioND/ucity">µCity</a> by AntonioND and <a href="https://github.com/pinobatch/libbet">Libbet and the Magic Floor</a> by Damian Yerrick.</sub>
 
 ## Features
 
@@ -24,10 +25,11 @@ A fast, accurate **Game Boy and Game Boy Color emulator for Android**, written f
 - Cartridges: ROM only, MBC1 (including MBC1M multicarts), MBC2, MBC3 with real-time clock (and MBC30), MBC5 (with rumble) and HuC1.
 
 **App**
+- Pixel-art design throughout. The handheld, controls and decorations are drawn in code on a grid of whole screen pixels, so they stay crisp on any display. The library, menus and dialogs use the same palette and a pixel font.
 - Game library. Import `.gb`, `.gbc` or `.zip` files from any folder, or with "Open with" from a file manager.
 - Battery saves are written automatically. The MBC3 clock keeps running while the app is closed, and saves are compatible with VBA-M, BGB and mGBA, with import and export.
 - Five save-state slots, plus automatic save and resume when you leave a game.
-- Multi-touch controls with D-pad diagonals and an A+B press zone. They sit below the screen in portrait and overlay it, translucent, in landscape.
+- Multi-touch controls with D-pad diagonals and an A+B press zone, laid out on the handheld's body: below the screen in portrait, either side of it in landscape. Quick taps always register.
 - Physical gamepads and keyboards, including analog sticks and the D-pad hat.
 - Fast-forward (2×, 3×, 4× or 8×), with tap to toggle or hold R1.
 - GameShark and Game Genie cheats.
@@ -51,8 +53,8 @@ A fast, accurate **Game Boy and Game Boy Color emulator for Android**, written f
 | B | B | A (bottom face button) or X | Z / J |
 | Start | Start | Start | Enter |
 | Select | Select | Select | Space / Backspace |
-| Menu | ☰ button / Back | Mode, L1 or left-stick click | Esc |
-| Fast-forward | ⏩ button | Hold R1 / R2 | – |
+| Menu | MENU knob / Back | Mode, L1 or left-stick click | Esc |
+| Fast-forward | FAST button | Hold R1 / R2 | – |
 
 The gamepad mapping is positional: the right face button is A, as on a real Game Boy.
 
@@ -104,7 +106,8 @@ app/src/main/java/com/retroemulator/gb/
 │   └── Cheats.kt      GameShark / Game Genie
 ├── emu/       Emulation thread, audio output and pacing
 ├── data/      ROM library, settings, palettes, cheat storage
-└── ui/        Emulator screen, game view, on-screen controls, dialogs
+└── ui/        Emulator screen, handheld skin and layout, controls, dialogs
+    └── pixel/ Pixel-art drawing helpers (stepped boxes, discs, sprites)
 ```
 
 ## Not supported
@@ -116,3 +119,5 @@ app/src/main/java/com/retroemulator/gb/
 ## License
 
 MIT. See [LICENSE](LICENSE).
+
+The bundled [Pixelify Sans](https://github.com/eifetx/Pixelify-Sans) font is licensed under the SIL Open Font License 1.1 (see [licenses/PixelifySans-OFL.txt](licenses/PixelifySans-OFL.txt)).

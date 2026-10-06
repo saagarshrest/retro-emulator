@@ -23,7 +23,10 @@ import com.retroemulator.gb.data.RomLibrary.RomEntry
 import com.retroemulator.gb.data.Settings
 import com.retroemulator.gb.ui.EmulatorActivity
 import com.retroemulator.gb.ui.SettingsDialog
+import com.retroemulator.gb.ui.pixel.PixelBoxDrawable
+import com.retroemulator.gb.ui.pixel.SkyDrawable
 import java.util.concurrent.Executors
+import kotlin.math.roundToInt
 
 /** Game library: lists imported ROMs and launches the emulator. */
 class MainActivity : Activity() {
@@ -57,6 +60,7 @@ class MainActivity : Activity() {
             }
         }
 
+        applyPixelStyle(root)
         listView = findViewById(R.id.list)
         emptyView = findViewById(R.id.empty)
         listView.adapter = adapter
@@ -81,6 +85,21 @@ class MainActivity : Activity() {
     override fun onDestroy() {
         io.shutdown()
         super.onDestroy()
+    }
+
+    /** Size of one art pixel for the UI chrome, rounded to whole screen pixels so edges stay crisp. */
+    private val unit: Float by lazy { (3 * resources.displayMetrics.density).roundToInt().toFloat() }
+
+    private fun applyPixelStyle(root: View) {
+        root.background = SkyDrawable(unit)
+        findViewById<View>(R.id.header_tab).background =
+            PixelBoxDrawable(unit, 3, TAB_TOP, TAB_BOTTOM, shadow = SHADOW)
+        findViewById<View>(R.id.settings_button).background =
+            PixelBoxDrawable(unit, 2, BUTTON_TOP, BUTTON_BOTTOM, SHADOW, BUTTON_PRESSED)
+        findViewById<View>(R.id.fab).background =
+            PixelBoxDrawable(unit, 3, ORANGE_TOP, ORANGE_BOTTOM, SHADOW, ORANGE_PRESSED)
+        findViewById<View>(R.id.empty_add).background =
+            PixelBoxDrawable(unit, 2, ORANGE_TOP, ORANGE_BOTTOM, SHADOW, ORANGE_PRESSED)
     }
 
     private fun refresh() {
@@ -246,7 +265,10 @@ class MainActivity : Activity() {
         override fun getItemId(position: Int) = position.toLong()
 
         override fun getView(position: Int, convertView: View?, parent: ViewGroup): View {
-            val view = convertView ?: layoutInflater.inflate(R.layout.item_rom, parent, false)
+            val view = convertView ?: layoutInflater.inflate(R.layout.item_rom, parent, false).also {
+                it.findViewById<View>(R.id.card).background =
+                    PixelBoxDrawable(unit, 2, CARD_TOP, CARD_BOTTOM, SHADOW, CARD_PRESSED)
+            }
             val entry = items[position]
             view.findViewById<TextView>(R.id.title).text = entry.title
 
@@ -270,15 +292,15 @@ class MainActivity : Activity() {
 
             val badge = view.findViewById<TextView>(R.id.badge)
             badge.text = if (entry.cgb) "GBC" else "GB"
-            badge.background.mutate().setTint(
-                getColor(
-                    when {
-                        entry.cgbOnly -> R.color.badge_gbc_only
-                        entry.cgb -> R.color.badge_gbc
-                        else -> R.color.badge_gb
-                    }
-                )
+            val badgeColor = getColor(
+                when {
+                    entry.cgbOnly -> R.color.badge_gbc_only
+                    entry.cgb -> R.color.badge_gbc
+                    else -> R.color.badge_gb
+                }
             )
+            badge.background = PixelBoxDrawable(unit, 2, badgeColor, shadow = BADGE_SHADOW)
+            badge.setTextColor(getColor(if (entry.cgb) android.R.color.white else R.color.badge_gb_text))
 
             val card = view.findViewById<View>(R.id.card)
             card.setOnClickListener { launch(entry) }
@@ -292,5 +314,20 @@ class MainActivity : Activity() {
         private const val REQ_PICK_ROMS = 1
         private const val REQ_IMPORT_SAVE = 2
         private const val REQ_EXPORT_SAVE = 3
+
+        // Pixel-art palette shared with the handheld skin.
+        private const val SHADOW = 0xFFE9A84E.toInt()
+        private const val BADGE_SHADOW = 0x55000000
+        private const val TAB_TOP = 0xFFFFEDB0.toInt()
+        private const val TAB_BOTTOM = 0xFFFFD45E.toInt()
+        private const val CARD_TOP = 0xFFFFF6D2.toInt()
+        private const val CARD_BOTTOM = 0xFFFFE39A.toInt()
+        private const val CARD_PRESSED = 0xFFFFD06A.toInt()
+        private const val BUTTON_TOP = 0xFFFFE89A.toInt()
+        private const val BUTTON_BOTTOM = 0xFFFFD45E.toInt()
+        private const val BUTTON_PRESSED = 0xFFF6C043.toInt()
+        private const val ORANGE_TOP = 0xFFFFC064.toInt()
+        private const val ORANGE_BOTTOM = 0xFFFF9A3E.toInt()
+        private const val ORANGE_PRESSED = 0xFFF0852A.toInt()
     }
 }

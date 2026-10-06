@@ -9,32 +9,31 @@
         android:pivotY="54"
         android:scaleX="0.86"
         android:scaleY="0.86">
-        <!-- body -->
-        <path
-            android:fillColor="#ECE8DF"
-            android:pathData="M40,22 h28 a5,5 0 0 1 5,5 v47 a12,12 0 0 1 -12,12 h-21 a5,5 0 0 1 -5,-5 v-54 a5,5 0 0 1 5,-5 z" />
-        <!-- screen bezel -->
-        <path
-            android:fillColor="#5A5A6E"
-            android:pathData="M42,27 h24 a3,3 0 0 1 3,3 v17 a6,6 0 0 1 -6,6 h-21 a3,3 0 0 1 -3,-3 v-20 a3,3 0 0 1 3,-3 z" />
-        <!-- screen -->
-        <path
-            android:fillColor="#9BBC0F"
-            android:pathData="M44,31 h20 v18 h-20 z" />
-        <path
-            android:fillColor="#306230"
-            android:pathData="M47,42 h4 v4 h-4 z M53,38 h4 v8 h-4 z M59,35 h3 v11 h-3 z" />
+        <!-- body: ink outline, orange fill, lighter top -->
+        <path android:fillColor="#FF1E1A16" android:pathData="M39,22H69V24H71V26H73V82H71V84H69V86H39V84H37V82H35V26H37V24H39Z" />
+        <path android:fillColor="#FFFF9E40" android:pathData="M39,24H69V26H71V82H69V84H39V82H37V26H39Z" />
+        <path android:fillColor="#FFFFD36F" android:pathData="M39,24H69V26H71V44H37V26H39Z" />
+        <path android:fillColor="#FFFFBC57" android:pathData="M37,44H71V60H37Z" />
+        <!-- screen frame and little scene -->
+        <path android:fillColor="#FF1E1A16" android:pathData="M41,28H67V30H68V54H67V55H41V54H40V30H41Z" />
+        <path android:fillColor="#FFFFF4C2" android:pathData="M42,30H66V53H42Z" />
+        <path android:fillColor="#FFFFFFFF" android:pathData="M54,33H61V35H54Z M56,32H59V33H56Z" />
+        <path android:fillColor="#FF8CD46B" android:pathData="M44,40H50V46H44Z" />
+        <path android:fillColor="#FF8A4B2A" android:pathData="M46,46H48V48H46Z" />
+        <path android:fillColor="#FFF39A1E" android:pathData="M57,44H60V46H57Z" />
+        <path android:fillColor="#FFFFC233" android:pathData="M57,46H60V48H57Z" />
+        <path android:fillColor="#FF7ED957" android:pathData="M42,48H66V50H42Z" />
+        <path android:fillColor="#FF9E6038" android:pathData="M42,50H66V53H42Z" />
         <!-- d-pad -->
-        <path
-            android:fillColor="#2E2E38"
-            android:pathData="M39.5,65.2 h9 v3.6 h-9 z M42.2,62.5 h3.6 v9 h-3.6 z" />
-        <!-- A / B -->
-        <path
-            android:fillColor="#A3285F"
-            android:pathData="M61.7,64 a3.3,3.3 0 1,0 6.6,0 a3.3,3.3 0 1,0 -6.6,0 z M54.7,68 a3.3,3.3 0 1,0 6.6,0 a3.3,3.3 0 1,0 -6.6,0 z" />
-        <!-- select / start -->
-        <path
-            android:fillColor="#8E8E9E"
-            android:pathData="M47,76.2 h5 a0.9,0.9 0 0 1 0,1.8 h-5 a0.9,0.9 0 0 1 0,-1.8 z M55,76.2 h5 a0.9,0.9 0 0 1 0,1.8 h-5 a0.9,0.9 0 0 1 0,-1.8 z" />
+        <path android:fillColor="#FF1E1A16" android:pathData="M41,62H45V58H49V62H53V66H49V70H45V66H41Z" />
+        <path android:fillColor="#FF4A4A52" android:pathData="M42,63H46V59H48V63H52V65H48V69H46V65H42Z" />
+        <!-- B (yellow) and A (orange) -->
+        <path android:fillColor="#FF1E1A16" android:pathData="M56,63H60V64H61V68H60V69H56V68H55V64H56Z" />
+        <path android:fillColor="#FFFFD54A" android:pathData="M56,64H60V68H56Z" />
+        <path android:fillColor="#FF1E1A16" android:pathData="M63,58H67V59H68V63H67V64H63V63H62V59H63Z" />
+        <path android:fillColor="#FFFF8A3A" android:pathData="M63,59H67V63H63Z" />
+        <!-- select / start and speaker -->
+        <path android:fillColor="#FF3A3A42" android:pathData="M45,75H50V77H45Z M53,75H58V77H53Z" />
+        <path android:fillColor="#FF1E1A16" android:pathData="M62,75H63V76H62Z M64,75H65V76H64Z M66,75H67V76H66Z M63,77H64V78H63Z M65,77H66V78H65Z M67,77H68V78H67Z" />
     </group>
 </vector>

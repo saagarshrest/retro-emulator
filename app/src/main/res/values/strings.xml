@@ -2,6 +2,11 @@
 <resources>
     <string name="app_name">Retro Emulator</string>
     <string name="library_subtitle">Game Boy &amp; Game Boy Color</string>
+    <string name="console_label">RETRO EMULATOR</string>
+    <string name="label_select">SELECT</string>
+    <string name="label_start">START</string>
+    <string name="label_menu">MENU</string>
+    <string name="label_fast">FAST</string>
     <string name="add_games">Add games</string>
     <string name="empty_title">No games yet</string>
     <string name="empty_body">Add your own .gb or .gbc ROM files (zipped files work too). Games and saves stay on this device.</string>
@@ -65,7 +70,6 @@
     <string name="settings_controls">Controls</string>
     <string name="settings_haptics">Vibrate on button press</string>
     <string name="settings_rumble">Rumble (supported games)</string>
-    <string name="settings_opacity">Landscape control opacity: %1$d%%</string>
     <string name="settings_emulation">Emulation</string>
     <string name="settings_auto_resume">Auto-save and resume where you left off</string>
     <string name="settings_ff_speed">Fast-forward speed</string>

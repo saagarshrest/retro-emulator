@@ -113,7 +113,6 @@ object SettingsDialog {
         header(R.string.settings_controls)
         switch(R.string.settings_haptics, settings.haptics) { settings.haptics = it }
         switch(R.string.settings_rumble, settings.rumble) { settings.rumble = it }
-        slider(R.string.settings_opacity, 10, 100, settings.controlOpacity) { settings.controlOpacity = it }
 
         header(R.string.settings_emulation)
         switch(R.string.settings_auto_resume, settings.autoResume) { settings.autoResume = it }

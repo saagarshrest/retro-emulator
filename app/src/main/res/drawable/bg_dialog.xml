@@ -1,8 +1,44 @@
 <?xml version="1.0" encoding="utf-8"?>
+<!--
+  Pixel-art dialog panel: stair-stepped corners (unit = 3dp), a one-unit ink outline and a hard
+  drop shadow, built from plain rectangles so it scales to any dialog size.
+-->
 <inset xmlns:android="http://schemas.android.com/apk/res/android"
     android:inset="16dp">
-    <shape android:shape="rectangle">
-        <solid android:color="@color/surface" />
-        <corners android:radius="20dp" />
-    </shape>
+    <layer-list>
+        <!--
+          Full-size transparent layer first: dialogs clip to the outline of the first layer, and this
+          keeps the ink outline and shadow below from being clipped away.
+        -->
+        <item>
+            <shape><solid android:color="#00000000" /></shape>
+        </item>
+        <!-- shadow (offset one unit right/down) -->
+        <item android:bottom="0dp" android:left="9dp" android:right="6dp" android:top="3dp">
+            <shape><solid android:color="@color/dialog_shadow" /></shape>
+        </item>
+        <item android:bottom="3dp" android:left="6dp" android:right="3dp" android:top="6dp">
+            <shape><solid android:color="@color/dialog_shadow" /></shape>
+        </item>
+        <item android:bottom="6dp" android:left="3dp" android:right="0dp" android:top="9dp">
+            <shape><solid android:color="@color/dialog_shadow" /></shape>
+        </item>
+        <!-- outline -->
+        <item android:bottom="3dp" android:left="6dp" android:right="9dp" android:top="0dp">
+            <shape><solid android:color="@color/ink" /></shape>
+        </item>
+        <item android:bottom="6dp" android:left="3dp" android:right="6dp" android:top="3dp">
+            <shape><solid android:color="@color/ink" /></shape>
+        </item>
+        <item android:bottom="9dp" android:left="0dp" android:right="3dp" android:top="6dp">
+            <shape><solid android:color="@color/ink" /></shape>
+        </item>
+        <!-- fill -->
+        <item android:bottom="6dp" android:left="6dp" android:right="9dp" android:top="3dp">
+            <shape><solid android:color="@color/dialog_fill" /></shape>
+        </item>
+        <item android:bottom="9dp" android:left="3dp" android:right="6dp" android:top="6dp">
+            <shape><solid android:color="@color/dialog_fill" /></shape>
+        </item>
+    </layer-list>
 </inset>

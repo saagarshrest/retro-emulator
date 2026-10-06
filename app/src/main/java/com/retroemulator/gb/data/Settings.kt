@@ -38,10 +38,6 @@ class Settings(context: Context) {
         get() = prefs.getBoolean(KEY_SMOOTH, false)
         set(v) = prefs.edit().putBoolean(KEY_SMOOTH, v).apply()
 
-    var controlOpacity: Int
-        get() = prefs.getInt(KEY_OPACITY, 70)
-        set(v) = prefs.edit().putInt(KEY_OPACITY, v.coerceIn(10, 100)).apply()
-
     var autoResume: Boolean
         get() = prefs.getBoolean(KEY_AUTO_RESUME, true)
         set(v) = prefs.edit().putBoolean(KEY_AUTO_RESUME, v).apply()
@@ -67,7 +63,6 @@ class Settings(context: Context) {
         private const val KEY_COLOR_CORRECTION = "color_correction"
         private const val KEY_INTEGER_SCALING = "integer_scaling"
         private const val KEY_SMOOTH = "smooth_scaling"
-        private const val KEY_OPACITY = "control_opacity"
         private const val KEY_AUTO_RESUME = "auto_resume"
         private const val KEY_FF_SPEED = "ff_speed"
         private const val KEY_FORCE_DMG = "force_dmg"

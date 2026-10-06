@@ -1,16 +1,19 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <color name="background">#0F0F14</color>
-    <color name="surface">#1A1A22</color>
-    <color name="surface_pressed">#26262F</color>
-    <color name="accent">#7C6CF2</color>
-    <color name="accent_dark">#5B4BD6</color>
-    <color name="text_primary">#F2F2F7</color>
-    <color name="text_secondary">#9A9AAD</color>
-    <color name="text_tertiary">#4A4A5C</color>
-    <color name="emu_background">#0B0B10</color>
-    <color name="badge_gb">#4F7A28</color>
-    <color name="badge_gbc">#5C4BC9</color>
-    <color name="badge_gbc_only">#B23A6E</color>
-    <color name="launcher_background">#2B2766</color>
+    <!-- Pixel-art handheld palette: cream sky, orange body, near-black ink -->
+    <color name="background">#FFF6DA</color>
+    <color name="ink">#1E1A16</color>
+    <color name="accent">#E8741E</color>
+    <color name="accent_dark">#C25A0E</color>
+    <color name="text_primary">#2A2118</color>
+    <color name="text_secondary">#7A4A1E</color>
+    <color name="text_tertiary">#B98A4E</color>
+    <color name="dialog_fill">#FFF8DE</color>
+    <color name="dialog_shadow">#E9B45C</color>
+    <color name="emu_background">#FFF8E6</color>
+    <color name="badge_gb">#9BBC0F</color>
+    <color name="badge_gb_text">#0F380F</color>
+    <color name="badge_gbc">#8B7CF6</color>
+    <color name="badge_gbc_only">#F06292</color>
+    <color name="launcher_background">#FFE9A0</color>
 </resources>

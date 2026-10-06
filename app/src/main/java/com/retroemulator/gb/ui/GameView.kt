@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
-import android.graphics.Rect
 import android.graphics.RectF
 import android.graphics.Typeface
 import android.view.View
@@ -24,48 +23,27 @@ class GameView(context: Context) : View(context) {
 
     private val density = resources.displayMetrics.density
     private val pixelPaint = Paint().apply { isFilterBitmap = false }
-    private val bezelPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = Color.parseColor("#1C1C24") }
     private val fpsPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
         color = Color.WHITE
         textSize = 13 * density
-        typeface = Typeface.MONOSPACE
+        typeface = Typeface.create(context.resources.getFont(com.retroemulator.gb.R.font.pixel), Typeface.BOLD)
         setShadowLayer(3 * density, 0f, 0f, Color.BLACK)
     }
 
+    /** Where the 160x144 picture is drawn; supplied by [ConsoleLayout]. */
     val screenRect = RectF()
-    private val bezelRect = RectF()
-    private var landscape = false
-    private var safeInsets = Rect()
 
-    var integerScaling = false
-        set(v) { field = v; relayout() }
     var smoothScaling = false
         set(v) { field = v; pixelPaint.isFilterBitmap = v; invalidate() }
     var fpsText: String? = null
         set(v) { field = v; postInvalidateOnAnimation() }
 
-    /** Invoked after the screen rectangle changes so the controls can lay out around it. */
-    var onLayoutChanged: ((RectF, Boolean) -> Unit)? = null
-
     init {
         bitmap.eraseColor(Color.BLACK)
     }
 
-    fun setSafeInsets(insets: Rect) {
-        safeInsets = Rect(insets)
-        relayout()
-    }
-
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
-        relayout()
-    }
-
-    private fun relayout() {
-        if (width == 0 || height == 0) return
-        landscape = ScreenLayout.compute(width, height, safeInsets, integerScaling, density, screenRect)
-        val pad = 10 * density
-        bezelRect.set(screenRect.left - pad, screenRect.top - pad, screenRect.right + pad, screenRect.bottom + pad)
-        onLayoutChanged?.invoke(screenRect, landscape)
+    fun setScreen(rect: RectF) {
+        screenRect.set(rect)
         invalidate()
     }
 
@@ -130,10 +108,7 @@ class GameView(context: Context) : View(context) {
                 hasPending = false
             }
         }
-        if (!landscape) {
-            val r = 14 * density
-            canvas.drawRoundRect(bezelRect, r, r, bezelPaint)
-        }
+        if (screenRect.isEmpty) return
         val big = sharpBitmap
         if (factor > 1 && big != null) {
             canvas.drawBitmap(big, null, screenRect, sharpPaint)

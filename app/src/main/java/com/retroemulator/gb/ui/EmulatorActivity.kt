@@ -44,6 +44,8 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
     private lateinit var entry: RomLibrary.RomEntry
     private lateinit var romData: ByteArray
     private var session: EmulatorSession? = null
+    private lateinit var root: FrameLayout
+    private lateinit var skin: ConsoleSkinView
     private lateinit var gameView: GameView
     private lateinit var controller: ControllerView
     private var safeInsets = Rect()
@@ -80,18 +82,22 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
         }
         entry = found
 
+        skin = ConsoleSkinView(this)
         gameView = GameView(this)
         controller = ControllerView(this)
         controller.listener = this
-        gameView.onLayoutChanged = { rect, landscape -> controller.layoutAround(rect, landscape, safeInsets) }
-        val root = FrameLayout(this).apply {
+        root = FrameLayout(this).apply {
             setBackgroundColor(getColor(R.color.emu_background))
+            addView(skin, FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             addView(gameView, FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             addView(controller, FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT)
             setOnApplyWindowInsetsListener { _, insets ->
                 safeInsets = cutoutInsets(insets)
-                gameView.setSafeInsets(safeInsets)
+                relayout()
                 insets
+            }
+            addOnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+                if (r - l != or - ol || b - t != ob - ot) relayout()
             }
         }
         setContentView(root)
@@ -156,11 +162,20 @@ class EmulatorActivity : Activity(), ControllerView.Listener, EmulatorSession.Li
             gb.ppu.setDmgPalette(palette.bg, palette.obj0, palette.obj1)
             gb.ppu.setColorCorrection(settings.colorCorrection)
         }
-        gameView.integerScaling = settings.integerScaling
         gameView.smoothScaling = settings.smoothScaling
         if (!settings.showFps) gameView.fpsText = null
         controller.hapticsEnabled = settings.haptics
-        controller.overlayOpacity = settings.controlOpacity / 100f
+        relayout()
+    }
+
+    /** Recomputes the handheld geometry for the current size, cut-outs and scaling setting. */
+    private fun relayout() {
+        if (!::root.isInitialized || root.width == 0 || root.height == 0) return
+        val layout = ConsoleLayout()
+        layout.compute(root.width, root.height, safeInsets, settings.integerScaling)
+        skin.consoleLayout = layout
+        gameView.setScreen(layout.screen)
+        controller.consoleLayout = layout
     }
 
     // ------------------------------------------------------------------------------------------
